@@ -1,11 +1,14 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:instaport_rider/constants/colors.dart';
 import 'package:http/http.dart' as http;
+import 'package:instaport_rider/controllers/user.dart';
 import 'package:instaport_rider/main.dart';
-import 'package:instaport_rider/screens/home.dart';
+import 'package:instaport_rider/models/rider_model.dart';
 
 class TakeOrderConfirm extends StatefulWidget {
   final String id;
@@ -18,6 +21,7 @@ class TakeOrderConfirm extends StatefulWidget {
 
 class _TakeOrderConfirmState extends State<TakeOrderConfirm> {
   final _storage = GetStorage();
+  RiderController riderController = Get.put(RiderController());
 
   void manageOrder() async {
     final token = await _storage.read("token");
@@ -27,9 +31,11 @@ class _TakeOrderConfirmState extends State<TakeOrderConfirm> {
         headers: {"Authorization": "Bearer $token"},
       );
       if (response.statusCode == 200) {
-        print(response.body);
+        var data = RiderDataResponse.fromJson(jsonDecode(response.body));
+        riderController.updateRider(data.rider);
         Get.back();
         Get.back();
+        Get.snackbar("Message", data.message);
       }
     } catch (e) {
       print(e);

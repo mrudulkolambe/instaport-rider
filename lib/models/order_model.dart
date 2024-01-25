@@ -1,6 +1,5 @@
 // ignore_for_file: non_constant_identifier_names
 
-import 'package:get/get.dart';
 import 'package:instaport_rider/models/address_model.dart';
 import 'package:instaport_rider/models/rider_model.dart';
 import 'package:instaport_rider/models/user_model.dart';
@@ -45,9 +44,36 @@ class OrderResponse {
   }
 }
 
+class OrderStatus {
+  int timestamp;
+  String message;
+
+  OrderStatus({
+    required this.timestamp,
+    required this.message,
+  });
+
+  factory OrderStatus.fromJson(dynamic json) {
+    final timestamp = json['timestamp'] as int;
+    final message = json['message'] as String;
+    return OrderStatus(
+      timestamp: timestamp,
+      message: message,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      "timestamp": timestamp,
+      "message": message,
+    };
+  }
+}
+
 class Orders {
   Address pickup;
   Address drop;
+  List<Address> droplocations;
   String id;
   String delivery_type;
   String parcel_weight;
@@ -63,7 +89,10 @@ class Orders {
   int parcel_value;
   double amount;
   double distance;
+  double commission;
   Rider? rider;
+  Address? payment_address;
+  List<OrderStatus> orderStatus;
 
   Orders({
     required this.pickup,
@@ -71,6 +100,7 @@ class Orders {
     required this.id,
     required this.delivery_type,
     required this.parcel_weight,
+    required this.droplocations,
     required this.phone_number,
     required this.notify_sms,
     required this.courier_bag,
@@ -83,7 +113,10 @@ class Orders {
     required this.parcel_value,
     required this.amount,
     required this.distance,
+    required this.commission,
+    required this.orderStatus,
     this.rider,
+    this.payment_address,
   });
 
   factory Orders.fromJson(dynamic json) {
@@ -98,9 +131,14 @@ class Orders {
 //       throw Exception('Failed to load places');
 //     }
 //   }
-
     final pickup = Address.fromJson(json['pickup']);
     final drop = Address.fromJson(json['drop']);
+    final orderStatus = List.from(json["orderStatus"]).map((e) {
+      return OrderStatus.fromJson(e);
+    }).toList();
+    final droplocations = List.from(json["droplocations"]).map((e) {
+      return Address.fromJson(e);
+    }).toList();
     final distance = 0.0;
     final id = json['_id'] as String;
     final delivery_type = json['delivery_type'] as String;
@@ -115,7 +153,11 @@ class Orders {
     final package = json['package'] as String;
     final time_stamp = json['time_stamp'] as int;
     final amount = json['amount'] + 0.0 as double;
+    final commission = json['commission'] + 0.0 as double;
     final parcel_value = json['parcel_value'];
+    final payment_address = json['payment_address'] == null
+        ? null
+        : Address.fromJson(json['payment_address']);
 
     return Orders(
       pickup: pickup,
@@ -127,6 +169,7 @@ class Orders {
       notify_sms: notify_sms,
       courier_bag: courier_bag,
       vehicle: vehicle,
+      commission: commission,
       status: status,
       payment_method: payment_method,
       customer: customer,
@@ -135,12 +178,39 @@ class Orders {
       parcel_value: parcel_value,
       amount: amount,
       distance: distance,
+      orderStatus: orderStatus,
       rider: json["rider"] == null
           ? null
           : Rider.fromJson(
               json["rider"],
             ),
+      payment_address: payment_address,
+      droplocations: droplocations,
     );
     // distance: distance.rows[0].elements[0].distance.value);
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      "pickup": pickup,
+      "drop": drop,
+      "id": id,
+      "delivery_type": delivery_type,
+      "parcel_weight": parcel_weight,
+      "phone_number": phone_number,
+      "notify_sms": notify_sms,
+      "courier_bag": courier_bag,
+      "vehicle": vehicle,
+      "status": status,
+      "payment_method": payment_method,
+      "customer": customer,
+      "package": package,
+      "time_stamp": time_stamp,
+      "parcel_value": parcel_value,
+      "amount": amount,
+      "distance": distance,
+      "orderStatus": orderStatus,
+      "rider": rider
+    };
   }
 }

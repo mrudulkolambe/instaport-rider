@@ -29,6 +29,7 @@ class _OrderCardState extends State<OrderCard> {
   void initState() {
     super.initState();
     _handleDistance();
+    print("Drop Locations: ${widget.data.droplocations}");
   }
 
   @override
@@ -45,13 +46,74 @@ class _OrderCardState extends State<OrderCard> {
 
   Future<void> _launchUrl(LatLng src, LatLng dest) async {
     final String url =
-        "https://www.google.com/maps/dir/?api=1&origin=${src.latitude},${src.longitude}&destination=${dest.latitude},${dest.longitude}&travelmode=driving&avoid=tolls&units=imperial&language=en&departure_time=now";
+        "https://www.google.com/maps/dir/?api=1&origin=${src.latitude},${src.longitude}&destination=${dest.latitude},${dest.longitude}&travelmode=motorcycle&avoid=tolls&units=imperial&language=en&departure_time=now";
     if (!await launchUrl(
       Uri.parse(url),
       mode: LaunchMode.externalApplication,
     )) {
       throw Exception('Could not launch $url');
     }
+  }
+
+  List<Widget> buildListWidget() {
+    return widget.data.droplocations.map((e) {
+      return Column(
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                weight: 1.2,
+              ),
+              const SizedBox(
+                width: 8,
+              ),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _launchUrl(
+                    LatLng(
+                      e.latitude,
+                      e.longitude,
+                    ),
+                    LatLng(
+                      e.latitude,
+                      e.longitude,
+                    ),
+                  ),
+                  child: Text(
+                    e.address,
+                    overflow: TextOverflow.ellipsis,
+                    softWrap: false,
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(
+            height: 5,
+          ),
+          Row(
+            children: [
+              const SizedBox(
+                width: 22,
+              ),
+              Text(
+                "${(distance / 1000).toPrecision(2)}km away",
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }).toList();
   }
 
   void _openBottomSheet(BuildContext context) {
@@ -70,6 +132,7 @@ class _OrderCardState extends State<OrderCard> {
               borderRadius: BorderRadius.circular(10),
             ),
             width: MediaQuery.of(context).size.width,
+            height: MediaQuery.of(context).size.height * 0.8,
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(context).viewInsets.bottom,
             ),
@@ -103,7 +166,7 @@ class _OrderCardState extends State<OrderCard> {
                   Row(
                     children: [
                       Text(
-                        "2 Addresses (${widget.data.payment_method == "cod" ? "Pending" : "Paid"})",
+                        "${widget.data.droplocations.length + 2} Addresses (${widget.data.payment_method == "cod" ? "COD" : "Paid"})",
                         style: GoogleFonts.poppins(
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
@@ -132,15 +195,19 @@ class _OrderCardState extends State<OrderCard> {
                                 Expanded(
                                   child: GestureDetector(
                                     onTap: () => _launchUrl(
-                                        LatLng(
-                                            appcontroler.currentposition.value
-                                                .target.latitude,
-                                            appcontroler.currentposition.value
-                                                .target.longitude),
-                                        LatLng(widget.data.pickup.latitude,
-                                            widget.data.pickup.longitude)),
+                                      LatLng(
+                                        appcontroler.currentposition.value
+                                            .target.latitude,
+                                        appcontroler.currentposition.value
+                                            .target.longitude,
+                                      ),
+                                      LatLng(
+                                        widget.data.pickup.latitude,
+                                        widget.data.pickup.longitude,
+                                      ),
+                                    ),
                                     child: Text(
-                                      widget.data.pickup.text,
+                                      widget.data.pickup.address,
                                       overflow: TextOverflow.ellipsis,
                                       softWrap: false,
                                       style: GoogleFonts.poppins(
@@ -190,12 +257,17 @@ class _OrderCardState extends State<OrderCard> {
                           Expanded(
                             child: GestureDetector(
                               onTap: () => _launchUrl(
-                                  LatLng(widget.data.pickup.latitude,
-                                      widget.data.pickup.longitude),
-                                  LatLng(widget.data.drop.latitude,
-                                      widget.data.drop.longitude)),
+                                LatLng(
+                                  widget.data.pickup.latitude,
+                                  widget.data.pickup.longitude,
+                                ),
+                                LatLng(
+                                  widget.data.drop.latitude,
+                                  widget.data.drop.longitude,
+                                ),
+                              ),
                               child: Text(
-                                widget.data.drop.text,
+                                widget.data.drop.address,
                                 overflow: TextOverflow.ellipsis,
                                 softWrap: false,
                                 style: GoogleFonts.poppins(
@@ -225,7 +297,13 @@ class _OrderCardState extends State<OrderCard> {
                         ],
                       ),
                       const SizedBox(
-                        height: 5,
+                        height: 10,
+                      ),
+                      SizedBox(
+                        height: 100,
+                        child: ListView(
+                          children: buildListWidget(),
+                        ),
                       ),
                       const Divider(),
                       const SizedBox(
@@ -295,7 +373,7 @@ class _OrderCardState extends State<OrderCard> {
                               if (widget.data.status == "new") {
                                 confirmTakeOrder();
                               } else {
-                                Get.to(TrackOrder(data: widget.data));
+                                Get.to(() => TrackOrder(data: widget.data));
                               }
                             },
                             child: Container(
@@ -386,7 +464,11 @@ class _OrderCardState extends State<OrderCard> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        _openBottomSheet(context);
+        if (widget.data.status == "new") {
+          _openBottomSheet(context);
+        } else {
+          Get.to(() => TrackOrder(data: widget.data));
+        }
       },
       child: Container(
         decoration: BoxDecoration(
@@ -413,7 +495,7 @@ class _OrderCardState extends State<OrderCard> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    "Rs. ${(widget.data.amount * 0.8).toPrecision(0)}",
+                    "Rs. ${(widget.data.amount * (100 - widget.data.commission)/100).toPrecision(2)}",
                     style: GoogleFonts.poppins(
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
@@ -434,7 +516,7 @@ class _OrderCardState extends State<OrderCard> {
               Row(
                 children: [
                   Text(
-                    "2 Addresses (${widget.data.payment_method == "cod" ? "Pending" : "Paid"})",
+                    "${widget.data.droplocations.length + 2} Addresses (${widget.data.payment_method == "cod" ? "Pending" : "Paid"})",
                     style: GoogleFonts.poppins(
                       fontWeight: FontWeight.w700,
                       fontSize: 12,
@@ -459,9 +541,8 @@ class _OrderCardState extends State<OrderCard> {
                       ),
                       Expanded(
                         child: Text(
-                          widget.data.pickup.text,
-                          overflow: TextOverflow.ellipsis,
-                          softWrap: false,
+                          widget.data.pickup.address,
+                          softWrap: true,
                           style: GoogleFonts.poppins(
                             fontWeight: FontWeight.w600,
                             fontSize: 12,
@@ -496,16 +577,18 @@ class _OrderCardState extends State<OrderCard> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.arrow_forward_ios_rounded,
-                          size: 14, weight: 1.2),
+                      const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 14,
+                        weight: 1.2,
+                        ),
                       const SizedBox(
                         width: 8,
                       ),
                       Expanded(
                         child: Text(
-                          widget.data.drop.text,
-                          overflow: TextOverflow.ellipsis,
-                          softWrap: false,
+                          widget.data.drop.address,
+                          softWrap: true,
                           style: GoogleFonts.poppins(
                             fontWeight: FontWeight.w600,
                             fontSize: 12,

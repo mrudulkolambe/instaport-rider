@@ -29,7 +29,11 @@ class _ProofOfAddressState extends State<ProofOfAddress> {
   @override
   void initState() {
     super.initState();
-    _addresscontroller.text = riderController.rider.address!;
+    if(riderController.rider.address == null){
+    _addresscontroller.text = "";
+    }else{
+      _addresscontroller.text = riderController.rider.address!;
+    }
   }
 
   void handleSave() async {

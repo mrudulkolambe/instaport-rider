@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:instaport_rider/controllers/app.dart';
+import 'package:instaport_rider/models/address_model.dart';
 import 'package:instaport_rider/models/direction_response_model.dart';
 import 'package:instaport_rider/models/location_model.dart';
 
@@ -22,10 +23,19 @@ class LocationService {
     }
   }
 
-  Future<DirectionDetailsInfo> fetchDirections(
-      double srclat, double srclng, double destlat, double destlng) async {
-    String endpoint =
-        'https://maps.googleapis.com/maps/api/directions/json?origin=$srclat,$srclng&destination=$destlat,$destlng&key=AIzaSyCQb159dbqJypdIO1a1o0v_mNgM5eFqVAo';
+  Future<DirectionDetailsInfo> fetchDirections(double srclat, double srclng,
+      double destlat, double destlng, List<Address> droplocations) async {
+    String endpoint = "";
+    if (droplocations.isEmpty) {
+      endpoint =
+          'https://maps.googleapis.com/maps/api/directions/json?origin=$srclat,$srclng&destination=$destlat,$destlng&key=AIzaSyCQb159dbqJypdIO1a1o0v_mNgM5eFqVAo';
+    } else {
+      final String waypointsString = droplocations
+          .map((address) => '${address.latitude},${address.longitude}')
+          .join('|');
+      endpoint =
+          'https://maps.googleapis.com/maps/api/directions/json?origin=$srclat,$srclng&destination=$destlat,$destlng&waypoints=optimize:true|$waypointsString&key=AIzaSyCQb159dbqJypdIO1a1o0v_mNgM5eFqVAo';
+    }
     var response = await http.get(Uri.parse(endpoint));
     var data = jsonDecode(response.body);
     if (response.statusCode == 200) {

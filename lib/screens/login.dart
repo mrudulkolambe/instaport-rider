@@ -7,11 +7,13 @@ import 'package:get_storage/get_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:instaport_rider/components/label.dart';
 import 'package:instaport_rider/constants/colors.dart';
+import 'package:instaport_rider/controllers/user.dart';
 import 'package:instaport_rider/main.dart';
+import 'package:instaport_rider/models/rider_model.dart';
 import 'package:instaport_rider/screens/create_account.dart';
-import 'package:instaport_rider/models/user_model.dart';
 import 'package:http/http.dart' as http;
 import 'package:instaport_rider/screens/home.dart';
+import 'package:instaport_rider/services/tracking_service.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -25,6 +27,23 @@ class _LoginState extends State<Login> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool loading = false;
+  final RiderController riderController = Get.put(RiderController());
+  final TrackingService trackingService = Get.find<TrackingService>();
+
+  void writeData(String token) async {
+    try {
+      final riderData = await http.get(Uri.parse('$apiUrl/rider/'),
+          headers: {'Authorization': 'Bearer $token'});
+      final userData = RiderDataResponse.fromJson(jsonDecode(riderData.body));
+      riderController.updateRider(userData.rider);
+      trackingService.setUser(userData.rider.id);
+    } catch (error) {
+      print('Error creating entry: $error');
+      // Handle errors or provide user feedback
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -171,6 +190,7 @@ class _LoginState extends State<Login> {
                                       if (data.error) {
                                       } else {
                                         _storage.write("token", data.token);
+                                        writeData(data.token);
                                         Get.to(() => const Home());
                                       }
                                       // ignore: empty_catches

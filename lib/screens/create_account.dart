@@ -1,17 +1,18 @@
 import 'dart:convert';
 
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:instaport_rider/components/label.dart';
 import 'package:instaport_rider/constants/colors.dart';
+import 'package:instaport_rider/controllers/user.dart';
 import 'package:instaport_rider/main.dart';
 import 'package:instaport_rider/models/rider_model.dart';
-import 'package:instaport_rider/screens/home.dart';
 import 'package:instaport_rider/screens/login.dart';
 import 'package:http/http.dart' as http;
-import 'package:instaport_rider/components/getsnackbar.dart';
+import 'package:instaport_rider/services/tracking_service.dart';
 
 class CreateAccount extends StatefulWidget {
   const CreateAccount({super.key});
@@ -25,6 +26,39 @@ class _CreateAccountState extends State<CreateAccount> {
   final TextEditingController _namecontroller = TextEditingController();
   final TextEditingController _phonecontroller = TextEditingController();
   final TextEditingController _passwordcontroller = TextEditingController();
+  final RiderController riderController = Get.put(RiderController());
+  final TrackingService trackingService = Get.find<TrackingService>();
+
+  void writeData(String token) async {
+    try {
+      final riderData = await http.get(Uri.parse('$apiUrl/rider/'),
+          headers: {'Authorization': 'Bearer $token'});
+      final userData = RiderDataResponse.fromJson(jsonDecode(riderData.body));
+      riderController.updateRider(userData.rider);
+      DatabaseReference databaseReference = FirebaseDatabase.instance.ref("/rider/${userData.rider.id}");
+      // trackingService.setUser(userData.rider.id);
+      databaseReference.set({
+        'timestamp': DateTime.now().toString(),
+        'id': userData.rider.id,
+        'latitude': 0.0,
+        'longitude': 0.0,
+      }).then((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Please Login Now!'),
+          ),
+        );
+        print(
+            'Entry with user ID as custom ID saved to the database successfully');
+      }).catchError((error) {
+        print('Error saving entry to the database: $error');
+      });
+    } catch (error) {
+      print('Error creating entry: $error');
+      // Handle errors or provide user feedback
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -167,16 +201,21 @@ class _CreateAccountState extends State<CreateAccount> {
                                       'password': _passwordcontroller.text,
                                     }),
                                   );
+                                  print(response.body);
                                   final data = SignInResponse.fromJson(
                                     json.decode(response.body),
                                   );
-                                  GetSnackbar.info(data.message);
+                                  print(data.error);
+                                  GetSnackBar(
+                                    title: "Message",
+                                    message: data.message,
+                                  );
                                   if (data.error) {
                                     setState(() {
                                       loading = false;
                                     });
                                   } else {
-                                    Get.to(() => const Home());
+                                    writeData(data.token);
                                     setState(() {
                                       loading = false;
                                     });

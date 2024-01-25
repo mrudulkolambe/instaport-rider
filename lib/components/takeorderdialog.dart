@@ -1,11 +1,15 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:instaport_rider/components/order_card.dart';
 import 'package:instaport_rider/constants/colors.dart';
+import 'package:instaport_rider/controllers/user.dart';
 import 'package:instaport_rider/main.dart';
 import 'package:instaport_rider/models/order_model.dart';
+import 'package:instaport_rider/models/rider_model.dart';
 import 'package:http/http.dart' as http;
 
 class TakeOrderDialog extends StatefulWidget {
@@ -20,12 +24,15 @@ class TakeOrderDialog extends StatefulWidget {
 final _storage = GetStorage();
 
 class _TakeOrderDialogState extends State<TakeOrderDialog> {
+  RiderController riderController = Get.put(RiderController());
   void manageOrder() async {
     final token = await _storage.read("token");
     try {
       var response = await http.patch(
           Uri.parse("$apiUrl/rider/assign/${widget.data.id}"),
           headers: {"Authorization": "Bearer $token"});
+      var data = RiderDataResponse.fromJson(jsonDecode(response.body));
+      riderController.updateRider(data.rider);
     } catch (e) {}
   }
 

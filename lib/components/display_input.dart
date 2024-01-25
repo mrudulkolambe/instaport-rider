@@ -16,7 +16,6 @@ class DisplayInput extends StatelessWidget {
         Label(label: "$label: "),
         TextFormField(
           initialValue: value,
-          enabled: false,
           style: GoogleFonts.poppins(color: Colors.black, fontSize: 13),
           decoration: InputDecoration(
             fillColor: Colors.white,

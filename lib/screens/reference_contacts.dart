@@ -41,7 +41,6 @@ class _ReferenceContactsState extends State<ReferenceContacts> {
     setState(() {
       person = index;
     });
-    print(riderController.rider.referenceContact1!.number);
     if (index == 0 && !riderController.rider.referenceContact1.isNull) {
       _namecontroller.text = riderController.rider.referenceContact1!.name;
       _relationcontroller.text =

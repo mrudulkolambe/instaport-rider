@@ -8,8 +8,11 @@ class RiderController extends GetxController {
     mobileno: "",
     role: "customer",
     wallet_amount: 0.0,
+    requestedAmount: 0.0,
     age: "",
-    image: ""
+    image: "",
+    status: "available",
+    approve: false,
   );
 
   void updateRider(Rider data) {

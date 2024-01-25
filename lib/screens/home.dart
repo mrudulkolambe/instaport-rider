@@ -14,10 +14,11 @@ import 'package:instaport_rider/constants/colors.dart';
 import 'package:instaport_rider/constants/svgs.dart';
 import 'package:instaport_rider/controllers/app.dart';
 import 'package:http/http.dart' as http;
+import 'package:instaport_rider/controllers/user.dart';
 import 'package:instaport_rider/main.dart';
 import 'package:instaport_rider/models/order_model.dart';
+import 'package:instaport_rider/models/rider_model.dart';
 import 'package:instaport_rider/services/location_service.dart';
-import 'package:collection/collection.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -30,10 +31,10 @@ final _storage = GetStorage();
 
 class _HomeState extends State<Home> with TickerProviderStateMixin {
   AppController appController = Get.put(AppController());
+  RiderController riderController = Get.put(RiderController());
   List<Orders> orders = [];
   List<Orders> ordersSearch = [];
   bool loading = false;
-  late Timer _timer;
   late TabController _tabController;
 
   @override
@@ -46,28 +47,13 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   void handlePrefetch() async {
     var ordersResponse = await getPastOrders();
     setState(() {
-      print("set");
       orders = ordersResponse;
     });
-    // _timer = Timer.periodic(const Duration(seconds: 5), (timer) async {
-    //   var responseData = await getPastOrders();
-    //   print(ListEquality<Orders>().equals(responseData, orders));
-    //   if (const ListEquality<Orders>().equals(responseData, orders)) {
-    //     print("set2");
-    //     return;
-    //   } else {
-    //     print("set3");
-    //     setState(() {
-    //       // orders = responseData;
-    //     });
-    //   }
-    // });
   }
 
   @override
   void dispose() {
     super.dispose();
-    _timer.cancel();
     _tabController.dispose();
   }
 
@@ -76,13 +62,18 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
     setState(() {
       loading = true;
     });
-    const String url = '$apiUrl/order/orders';
+    const String url = '$apiUrl/order/riders';
     final response = await http
         .get(Uri.parse(url), headers: {'Authorization': 'Bearer $token'});
     final data = AllOrderResponse.fromJson(json.decode(response.body));
     var sortedOrders = await sortOrders(data.orders);
+    final riderData = await http.get(Uri.parse('$apiUrl/rider/'),
+        headers: {'Authorization': 'Bearer $token'});
+    final userData = RiderDataResponse.fromJson(jsonDecode(riderData.body));
+    riderController.updateRider(userData.rider);
     setState(() {
       ordersSearch = sortedOrders;
+      orders = sortedOrders;
       loading = false;
     });
     return sortedOrders;
@@ -90,13 +81,11 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
 
   Future<List<Orders>> sortOrders(List<Orders> ordersData) async {
     Future.forEach(ordersData, (Orders order) async {
-      print(order.distance);
       var data = await LocationService().fetchDistance(
         LatLng(appController.currentposition.value.target.latitude,
             appController.currentposition.value.target.longitude),
         LatLng(order.pickup.latitude, order.pickup.longitude),
       );
-      print(data);
       order.distance = data.rows[0].elements[0].distance != null
           ? data.rows[0].elements[0].distance!.value!
           : 0;
@@ -215,8 +204,6 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                                     .where(
                                       (element) =>
                                           element.rider != null &&
-                                          element.status != "new" &&
-                                          element.status != "completed" &&
                                           element.status == "processing",
                                     )
                                     .isEmpty
@@ -236,9 +223,6 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                                               .where(
                                                 (element) =>
                                                     element.rider != null &&
-                                                    element.status != "new" &&
-                                                    element.status !=
-                                                        "completed" &&
                                                     element.status ==
                                                         "processing",
                                               )
@@ -251,13 +235,10 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                                         height: 10,
                                       ),
                                       itemCount: orders
-                                          .where(
-                                            (element) =>
-                                                element.rider != null &&
-                                                element.status != "new" &&
-                                                element.status != "completed" &&
-                                                element.status == "processing",
-                                          )
+                                          .where((element) {
+                                            return element.rider != null &&
+                                                element.status == "processing";
+                                          })
                                           .toList()
                                           .length,
                                     ),
@@ -270,7 +251,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                                     .where(
                                       (element) =>
                                           element.rider != null &&
-                                          element.status == "completed",
+                                          element.status == "delivered",
                                     )
                                     .isEmpty
                                 ? Center(
@@ -289,9 +270,9 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                                               .where(
                                                 (element) =>
                                                     element
-                                                        .rider!.id.isNotEmpty &&
+                                                        .rider!= null &&
                                                     element.status ==
-                                                        "completed",
+                                                        "delivered",
                                               )
                                               .toList()[index],
                                           modal: true,
@@ -302,11 +283,10 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                                         height: 10,
                                       ),
                                       itemCount: orders
-                                          .where(
-                                            (element) =>
-                                                element.rider!.id.isNotEmpty &&
-                                                element.status == "completed",
-                                          )
+                                          .where((element) {
+                                            return element.rider != null &&
+                                                element.status == "delivered";
+                                          })
                                           .toList()
                                           .length,
                                     ),

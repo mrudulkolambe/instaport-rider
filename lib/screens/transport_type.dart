@@ -25,10 +25,27 @@ class _TransportTypeState extends State<TransportType> {
   RiderController riderController = Get.put(RiderController());
   bool loading = false;
   String vehicle = "scooty";
+  String drivinglicense = "";
 
   @override
   void initState() {
     super.initState();
+  }
+
+  void handlePrefetch() async {
+    var token = await _storage.read("token");
+    var response = await http.get(
+      Uri.parse("$apiUrl/rider/"),
+      headers: {"Authorization": "Bearer $token"},
+    );
+    var rider = RiderDataResponse.fromJson(jsonDecode(response.body)).rider;
+    riderController.updateRider(
+      rider,
+    );
+    setState(() {
+      vehicle = rider.vehicle!;
+      drivinglicense = rider.drivinglicense!;
+    });
   }
 
   void handleSave() async {
@@ -94,7 +111,7 @@ class _TransportTypeState extends State<TransportType> {
                         height: 55,
                         width: MediaQuery.of(context).size.width,
                         decoration: BoxDecoration(
-                          color: vehicle != "scooty"
+                          color: vehicle == "scooty"
                               ? Colors.transparent
                               : accentColor,
                           borderRadius: BorderRadius.circular(
@@ -114,7 +131,7 @@ class _TransportTypeState extends State<TransportType> {
                               child: Text(
                                 "Scooty",
                                 style: GoogleFonts.poppins(
-                                  color: vehicle != "scooty"
+                                  color: vehicle == "scooty"
                                       ? accentColor
                                       : Colors.white,
                                   fontWeight: FontWeight.w600,
@@ -138,7 +155,7 @@ class _TransportTypeState extends State<TransportType> {
                         height: 55,
                         width: MediaQuery.of(context).size.width,
                         decoration: BoxDecoration(
-                          color: vehicle != "bike"
+                          color: vehicle == "bike"
                               ? Colors.transparent
                               : accentColor,
                           borderRadius: BorderRadius.circular(
@@ -158,7 +175,7 @@ class _TransportTypeState extends State<TransportType> {
                               child: Text(
                                 "Bike",
                                 style: GoogleFonts.poppins(
-                                  color: vehicle != "bike"
+                                  color: vehicle == "bike"
                                       ? accentColor
                                       : Colors.white,
                                   fontWeight: FontWeight.w600,
@@ -212,10 +229,12 @@ class _TransportTypeState extends State<TransportType> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              "Upload Driving License",
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.w500,
+                            GestureDetector(
+                              child: Text(
+                                "Upload Driving License",
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
                             const Icon(

@@ -6,12 +6,12 @@ import 'package:instaport_rider/components/appbar.dart';
 import 'package:instaport_rider/components/bottomnavigationbar.dart';
 import 'package:instaport_rider/constants/colors.dart';
 import 'package:instaport_rider/controllers/user.dart';
-import 'package:instaport_rider/models/rider_model.dart';
 import 'package:instaport_rider/screens/edit_profile.dart';
 import 'package:instaport_rider/screens/login.dart';
 import 'package:instaport_rider/screens/proof_of_address.dart';
 import 'package:instaport_rider/screens/reference_contacts.dart';
 import 'package:instaport_rider/screens/transport_type.dart';
+import 'package:instaport_rider/services/tracking_service.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key});
@@ -21,6 +21,8 @@ class Profile extends StatefulWidget {
 }
 
 class _ProfileState extends State<Profile> {
+  final TrackingService trackingService = Get.find<TrackingService>();
+
   final _storage = GetStorage();
   @override
   Widget build(BuildContext context) {
@@ -352,11 +354,12 @@ class _ProfileState extends State<Profile> {
                       height: 15,
                     ),
                     GestureDetector(
-                      onTap: () => {
-                        _storage.remove("token"),
+                      onTap: () {
+                        _storage.remove("token");
+                        trackingService.setUser("");
                         Get.to(
                           () => const Login(),
-                        )
+                        );
                       },
                       child: Container(
                         width: MediaQuery.of(context).size.width - 50,

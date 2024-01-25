@@ -1,12 +1,22 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:instaport_rider/components/appbar.dart';
+import 'package:instaport_rider/components/bottomnavigationbar.dart';
+import 'package:instaport_rider/components/transaction_card.dart';
 import 'package:instaport_rider/constants/colors.dart';
 import 'package:instaport_rider/constants/svgs.dart';
 import 'package:instaport_rider/controllers/user.dart';
+import 'package:http/http.dart' as http;
+import 'package:instaport_rider/main.dart';
+import 'package:instaport_rider/models/transaction_model.dart';
+import 'package:instaport_rider/models/rider_model.dart';
 
 class Wallet extends StatefulWidget {
   const Wallet({super.key});
@@ -16,6 +26,75 @@ class Wallet extends StatefulWidget {
 }
 
 class _WalletState extends State<Wallet> {
+  List<SingleTransaction> transactions = [];
+  late Timer _timer;
+  bool loading = true;
+  bool requestLoading = false;
+  final _storage = GetStorage();
+  RiderController riderController = Get.put(RiderController());
+
+  @override
+  void initState() {
+    super.initState();
+    handleFetch(true);
+    _timer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      handleFetch(false);
+    });
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _timer.cancel();
+  }
+
+  void handleFetch(bool load) async {
+    try {
+      setState(() {
+        loading = load;
+      });
+      final token = await _storage.read("token");
+      final response = await http.get(Uri.parse("$apiUrl/rider/transactions"),
+          headers: {'Authorization': 'Bearer $token'});
+          print(response.body);
+      final data = await http.get(Uri.parse('$apiUrl/rider/'),
+          headers: {'Authorization': 'Bearer $token'});
+      final userData = RiderDataResponse.fromJson(jsonDecode(data.body));
+      riderController.updateRider(userData.rider);
+      if (response.statusCode == 200) {
+        RiderTransactions transactionResponse =
+            RiderTransactions.fromJson(jsonDecode(response.body));
+        setState(() {
+          loading = false;
+          transactions = transactionResponse.transactions.reversed.toList();
+        });
+      }
+    } catch (e) {
+      print(e);
+    }
+  }
+
+  void requestMoney() async {
+    try {
+      final token = await _storage.read("token");
+      setState(() {
+        requestLoading = true;
+      });
+
+      var response = await http.post(
+        Uri.parse("$apiUrl/rider/request-money"),
+        headers: {
+          "Authorization": "Bearer $token",
+        },
+      );
+      var data = RiderDataResponse.fromJson(jsonDecode(response.body));
+      Get.snackbar("Message", data.message);
+      setState(() {
+        requestLoading = false;
+      });
+    } catch (e) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -76,10 +155,10 @@ class _WalletState extends State<Wallet> {
                                   ),
                                 ),
                                 const SizedBox(
-                                  height: 10,
+                                  height: 0,
                                 ),
                                 Text(
-                                  "₹${ridercontroller.rider.wallet_amount}",
+                                  "₹${ridercontroller.rider.wallet_amount.toPrecision(2)}",
                                   style: GoogleFonts.poppins(
                                     color: Colors.white,
                                     fontSize: 35,
@@ -87,25 +166,30 @@ class _WalletState extends State<Wallet> {
                                   ),
                                 ),
                                 const SizedBox(
-                                  height: 30,
+                                  height: 10,
+                                ),
+                                Text(
+                                  "Requested: ₹${ridercontroller.rider.requestedAmount.toPrecision(2)}",
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(
+                                  height: 20,
                                 ),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     GestureDetector(
-                                      // onTap: () async {
-                                      //   final token =
-                                      //       await _storage.read("token");
-                                      //   Get.to(() => WalletTopup(
-                                      //         url:
-                                      //             "https://instaport-transactions.vercel.app/?token=$token",
-                                      //       ));
-                                      // },
+                                      onTap: requestMoney,
                                       child: Container(
-                                        width:
-                                            MediaQuery.of(context).size.width -
-                                                50 -
-                                                45,
+                                        width: MediaQuery.of(context)
+                                                .size
+                                                .width -
+                                            50 -
+                                            45,
                                         decoration: BoxDecoration(
                                           color: Colors.white,
                                           borderRadius:
@@ -155,7 +239,7 @@ class _WalletState extends State<Wallet> {
               const SizedBox(
                 height: 8,
               ),
-              false
+              loading
                   ? SizedBox(
                       height: MediaQuery.of(context).size.height - 300 - 150,
                       width: MediaQuery.of(context).size.width - 50,
@@ -166,7 +250,7 @@ class _WalletState extends State<Wallet> {
                         ),
                       ),
                     )
-                  : true
+                  : transactions.isEmpty
                       ? SizedBox(
                           height:
                               MediaQuery.of(context).size.height - 300 - 150,
@@ -182,18 +266,21 @@ class _WalletState extends State<Wallet> {
                           child: ListView.separated(
                             physics: const BouncingScrollPhysics(),
                             scrollDirection: Axis.vertical,
-                            itemBuilder: (context, index) => null,
+                            itemBuilder: (context, index) => TransactionCard(
+                              data: transactions[index],
+                            ),
                             separatorBuilder: (context, index) =>
                                 const SizedBox(
                               height: 10,
                             ),
-                            itemCount: 0,
+                            itemCount: transactions.length,
                           ),
                         )
             ],
           ),
         ),
       ),
+      bottomNavigationBar: const CustomBottomNavigationBar(),
     );
   }
 }
