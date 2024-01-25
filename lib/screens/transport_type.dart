@@ -1,17 +1,24 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:instaport_rider/components/appbar.dart';
 import 'package:instaport_rider/components/bottomnavigationbar.dart';
 import 'package:instaport_rider/constants/colors.dart';
 import 'package:instaport_rider/controllers/user.dart';
 import 'package:instaport_rider/main.dart';
 import 'package:http/http.dart' as http;
+import 'package:instaport_rider/models/cloudinary_upload.dart';
 import 'package:instaport_rider/models/rider_model.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class TransportType extends StatefulWidget {
   const TransportType({super.key});
@@ -30,6 +37,75 @@ class _TransportTypeState extends State<TransportType> {
   @override
   void initState() {
     super.initState();
+    handlePrefetch();
+  }
+
+  Future<bool> requestGalleryPermission() async {
+    setState(() {
+      loading = true;
+    });
+    if (await Permission.storage.request().isGranted) {
+      return true;
+    } else {
+      var status = await Permission.storage.request();
+      if (status.isGranted) {
+        return true;
+      } else {
+        return false;
+      }
+    }
+  }
+
+  void _launchURL(String drivinglicense) async {
+    if (drivinglicense.isNotEmpty &&
+        !await launchUrl(
+          Uri.parse(drivinglicense),
+          mode: LaunchMode.platformDefault,
+        )) {
+      throw Exception('Could not launch $drivinglicense');
+    }
+  }
+
+  Future<void> uploadToCloudinary(File imageFile) async {
+    final url =
+        Uri.parse('https://api.cloudinary.com/v1_1/dwd2fznsk/image/upload');
+    final request = http.MultipartRequest('POST', url)
+      ..fields['upload_preset'] = 'pmoqxm8k'
+      ..files.add(await http.MultipartFile.fromPath('file', imageFile.path));
+    final response = await request.send();
+    if (response.statusCode == 200) {
+      final responseData = await response.stream.toBytes();
+      final responseString = String.fromCharCodes(responseData);
+      final jsonMap = jsonDecode(responseString);
+      var data = CloudinaryUpload.fromJson(jsonMap);
+      setState(() {
+        drivinglicense = data.secureUrl;
+      });
+      handleSave();
+      Get.snackbar("Message", 'Driving license updated successfully!');
+    }
+  }
+
+  Future<void> getImage() async {
+    bool permissionGranted = await requestGalleryPermission();
+    if (permissionGranted) {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        uploadToCloudinary(File(image.path));
+      } else {
+        setState(() {
+          loading = false;
+        });
+      }
+    } else {
+      setState(() {
+        loading = false;
+      });
+      openAppSettings();
+      Get.snackbar("Error", 'Permission to access gallery denied');
+    }
+    return;
   }
 
   void handlePrefetch() async {
@@ -43,8 +119,8 @@ class _TransportTypeState extends State<TransportType> {
       rider,
     );
     setState(() {
-      vehicle = rider.vehicle!;
-      drivinglicense = rider.drivinglicense!;
+      vehicle = rider.vehicle == null ? "scooty" : rider.vehicle!;
+      drivinglicense = rider.drivinglicense == "" ? "" : rider.drivinglicense!;
     });
   }
 
@@ -59,7 +135,8 @@ class _TransportTypeState extends State<TransportType> {
         'Content-Type': 'application/json'
       };
       var request = http.Request('PATCH', Uri.parse('$apiUrl/rider/update'));
-      request.body = json.encode({"vehicle": vehicle});
+      request.body =
+          json.encode({"vehicle": vehicle, "drivinglicense": drivinglicense});
       request.headers.addAll(headers);
 
       http.StreamedResponse response = await request.send();
@@ -67,6 +144,7 @@ class _TransportTypeState extends State<TransportType> {
       if (response.statusCode == 200) {
         var data = await response.stream.bytesToString();
         var profileData = RiderDataResponse.fromJson(jsonDecode(data));
+        print(data);
         riderController.updateRider(profileData.rider);
       } else {
         Get.snackbar("Error", response.reasonPhrase!);
@@ -230,6 +308,7 @@ class _TransportTypeState extends State<TransportType> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             GestureDetector(
+                              onTap: getImage,
                               child: Text(
                                 "Upload Driving License",
                                 style: GoogleFonts.poppins(
@@ -237,9 +316,12 @@ class _TransportTypeState extends State<TransportType> {
                                 ),
                               ),
                             ),
-                            const Icon(
-                              Icons.link,
-                              color: Colors.blue,
+                            GestureDetector(
+                              onTap: () => _launchURL(drivinglicense),
+                              child: const Icon(
+                                Icons.link,
+                                color: Colors.blue,
+                              ),
                             )
                           ],
                         ),

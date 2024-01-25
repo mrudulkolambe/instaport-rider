@@ -6,6 +6,7 @@ import 'package:instaport_rider/components/appbar.dart';
 import 'package:instaport_rider/components/bottomnavigationbar.dart';
 import 'package:instaport_rider/constants/colors.dart';
 import 'package:instaport_rider/controllers/user.dart';
+import 'package:instaport_rider/screens/bank_details.dart';
 import 'package:instaport_rider/screens/edit_profile.dart';
 import 'package:instaport_rider/screens/login.dart';
 import 'package:instaport_rider/screens/proof_of_address.dart';
@@ -187,6 +188,44 @@ class _ProfileState extends State<Profile> {
                             children: [
                               Text(
                                 "Transport Type",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                size: 15,
+                              )
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 15,
+                    ),
+                    GestureDetector(
+                      onTap: () => Get.to(() => const BankDetails()),
+                      child: Container(
+                        width: MediaQuery.of(context).size.width - 50,
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            width: 2,
+                            color: accentColor,
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 15.0,
+                            horizontal: 25,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "Bank Details",
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,

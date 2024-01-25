@@ -880,7 +880,7 @@ class _TrackOrderDetailsState extends State<TrackOrderDetails>
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          "Take photo and complete the order",
+                                          "Complete the order",
                                           style: GoogleFonts.poppins(
                                             fontSize: 12,
                                             fontWeight: FontWeight.w600,

@@ -13,18 +13,18 @@ import 'package:instaport_rider/main.dart';
 import 'package:http/http.dart' as http;
 import 'package:instaport_rider/models/rider_model.dart';
 
-class ProofOfAddress extends StatefulWidget {
-  const ProofOfAddress({super.key});
+class BankDetails extends StatefulWidget {
+  const BankDetails({super.key});
 
   @override
-  State<ProofOfAddress> createState() => _ProofOfAddressState();
+  State<BankDetails> createState() => _BankDetailsState();
 }
 
-class _ProofOfAddressState extends State<ProofOfAddress> {
+class _BankDetailsState extends State<BankDetails> {
   final _storage = GetStorage();
-  final TextEditingController _addresscontroller = TextEditingController();
-  final TextEditingController _aadharcontroller = TextEditingController();
-  final TextEditingController _pancontroller = TextEditingController();
+  final TextEditingController _accHolderName = TextEditingController();
+  final TextEditingController _accountNumber = TextEditingController();
+  final TextEditingController _ifscode = TextEditingController();
   RiderController riderController = Get.put(RiderController());
   bool loading = false;
   bool uploading = false;
@@ -32,15 +32,9 @@ class _ProofOfAddressState extends State<ProofOfAddress> {
   @override
   void initState() {
     super.initState();
-    if (riderController.rider.address == null) {
-      _addresscontroller.text = "";
-      _aadharcontroller.text = "";
-      _pancontroller.text = "";
-    } else {
-      _addresscontroller.text = riderController.rider.address!;
-      _aadharcontroller.text = riderController.rider.aadharcard!;
-      _pancontroller.text = riderController.rider.pancard!;
-    }
+      _accHolderName.text = riderController.rider.accname != null ? riderController.rider.accname! : "";
+      _accountNumber.text = riderController.rider.accno != null ? riderController.rider.accno! : "";
+      _ifscode.text = riderController.rider.ifsc != null ? riderController.rider.ifsc! : "";
   }
 
   void handleSave() async {
@@ -55,9 +49,9 @@ class _ProofOfAddressState extends State<ProofOfAddress> {
       };
       var request = http.Request('PATCH', Uri.parse('$apiUrl/rider/update'));
       request.body = json.encode({
-        "address": _addresscontroller.text,
-        "aadhar_number": _aadharcontroller.text,
-        "pan_number": _pancontroller.text,
+        "acc_holder": _accHolderName.text,
+        "acc_no": _accountNumber.text,
+        "acc_ifsc": _ifscode.text,
       });
       request.headers.addAll(headers);
 
@@ -86,7 +80,7 @@ class _ProofOfAddressState extends State<ProofOfAddress> {
         automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
         title: const CustomAppBar(
-          title: "Proof Of Address",
+          title: "Bank Details",
         ),
       ),
       body: SafeArea(
@@ -100,125 +94,10 @@ class _ProofOfAddressState extends State<ProofOfAddress> {
               builder: (ridercontroller) {
                 return Column(
                   children: [
-                    Text(
-                      "Upload or Capture all your above mentioned ID's. Upload both sides. The photo must be clearly visible.",
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(
-                      height: 10,
-                    ),
                     Row(
                       children: [
                         Text(
-                          "Address: ",
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(
-                      height: 2,
-                    ),
-                    TextFormField(
-                      keyboardType: TextInputType.streetAddress,
-                      controller: _addresscontroller,
-                      style: GoogleFonts.poppins(
-                        color: Colors.black,
-                        fontSize: 13,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: "Enter your address",
-                        hintStyle: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Colors.black38,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(
-                            width: 2,
-                            color: Colors.black.withOpacity(0.1),
-                          ),
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide:
-                              const BorderSide(width: 2, color: Colors.black26),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide:
-                              const BorderSide(width: 2, color: accentColor),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 15,
-                          horizontal: 20,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(
-                      height: 10,
-                    ),
-                    Row(
-                      children: [
-                        Text(
-                          "Aadhar Card: ",
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(
-                      height: 2,
-                    ),
-                    TextFormField(
-                      keyboardType: TextInputType.number,
-                      controller: _aadharcontroller,
-                      style: GoogleFonts.poppins(
-                        color: Colors.black,
-                        fontSize: 13,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: "Enter your aadhar card number",
-                        hintStyle: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Colors.black38,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(
-                            width: 2,
-                            color: Colors.black.withOpacity(0.1),
-                          ),
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide:
-                              const BorderSide(width: 2, color: Colors.black26),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide:
-                              const BorderSide(width: 2, color: accentColor),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 15,
-                          horizontal: 20,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(
-                      height: 10,
-                    ),
-                    Row(
-                      children: [
-                        Text(
-                          "PAN Card: ",
+                          "Name of Account Holder: ",
                           style: GoogleFonts.poppins(
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
@@ -231,13 +110,119 @@ class _ProofOfAddressState extends State<ProofOfAddress> {
                     ),
                     TextFormField(
                       keyboardType: TextInputType.name,
-                      controller: _pancontroller,
+                      controller: _accHolderName,
                       style: GoogleFonts.poppins(
                         color: Colors.black,
                         fontSize: 13,
                       ),
                       decoration: InputDecoration(
-                        hintText: "Enter your pancard number",
+                        hintText: "Enter your account holder name",
+                        hintStyle: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.black38,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(
+                            width: 2,
+                            color: Colors.black.withOpacity(0.1),
+                          ),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide:
+                              const BorderSide(width: 2, color: Colors.black26),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide:
+                              const BorderSide(width: 2, color: accentColor),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 15,
+                          horizontal: 20,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 10,
+                    ),
+                    Row(
+                      children: [
+                        Text(
+                          "Account Number: ",
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(
+                      height: 2,
+                    ),
+                    TextFormField(
+                      keyboardType: TextInputType.number,
+                      controller: _accountNumber,
+                      style: GoogleFonts.poppins(
+                        color: Colors.black,
+                        fontSize: 13,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: "Enter your account number",
+                        hintStyle: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.black38,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(
+                            width: 2,
+                            color: Colors.black.withOpacity(0.1),
+                          ),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide:
+                              const BorderSide(width: 2, color: Colors.black26),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide:
+                              const BorderSide(width: 2, color: accentColor),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 15,
+                          horizontal: 20,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 10,
+                    ),
+                    Row(
+                      children: [
+                        Text(
+                          "IFSC Code: ",
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(
+                      height: 2,
+                    ),
+                    TextFormField(
+                      keyboardType: TextInputType.name,
+                      controller: _ifscode,
+                      style: GoogleFonts.poppins(
+                        color: Colors.black,
+                        fontSize: 13,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: "Enter your bank IFSC code",
                         hintStyle: GoogleFonts.poppins(
                           fontSize: 14,
                           color: Colors.black38,
