@@ -269,8 +269,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                                           data: orders
                                               .where(
                                                 (element) =>
-                                                    element
-                                                        .rider!= null &&
+                                                    element.rider != null &&
                                                     element.status ==
                                                         "delivered",
                                               )

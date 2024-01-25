@@ -363,6 +363,34 @@ class _OrderCardState extends State<OrderCard> {
                         ],
                       ),
                       const SizedBox(
+                        height: 3,
+                      ),
+                      Row(
+                        children: [
+                          Text(
+                            "Vehicle: ",
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(
+                            width: 2,
+                          ),
+                          Expanded(
+                            child: Text(
+                              widget.data.vehicle,
+                              overflow: TextOverflow.ellipsis,
+                              softWrap: false,
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(
                         height: 20,
                       ),
                       Row(
@@ -495,7 +523,7 @@ class _OrderCardState extends State<OrderCard> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    "Rs. ${(widget.data.amount * (100 - widget.data.commission)/100).toPrecision(2)}",
+                    "Rs. ${(widget.data.amount * (100 - widget.data.commission) / 100).toPrecision(2)}",
                     style: GoogleFonts.poppins(
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
@@ -581,7 +609,7 @@ class _OrderCardState extends State<OrderCard> {
                         Icons.arrow_forward_ios_rounded,
                         size: 14,
                         weight: 1.2,
-                        ),
+                      ),
                       const SizedBox(
                         width: 8,
                       ),
@@ -673,7 +701,35 @@ class _OrderCardState extends State<OrderCard> {
                         ),
                       ),
                     ],
-                  )
+                  ),
+                  const SizedBox(
+                    height: 3,
+                  ),
+                  Row(
+                    children: [
+                      Text(
+                        "Vehicle: ",
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(
+                        width: 2,
+                      ),
+                      Expanded(
+                        child: Text(
+                          widget.data.vehicle,
+                          overflow: TextOverflow.ellipsis,
+                          softWrap: false,
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ],

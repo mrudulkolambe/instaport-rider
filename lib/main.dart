@@ -27,7 +27,6 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  debugPrint = (String? message, {int? wrapWidth}) {};
   runApp(const MyApp());
 }
 

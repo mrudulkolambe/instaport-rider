@@ -7,8 +7,6 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:instaport_rider/components/appbar.dart';
-import 'package:instaport_rider/components/bottomnavigationbar.dart';
 import 'package:instaport_rider/components/display_input.dart';
 import 'package:instaport_rider/constants/colors.dart';
 import 'package:instaport_rider/main.dart';
@@ -57,7 +55,7 @@ class _TrackOrderDetailsState extends State<TrackOrderDetails>
     setState(() {
       order = widget.data;
     });
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     lists.add(
       ExpansionPanelItem(
         title: "Pickup",
@@ -384,14 +382,6 @@ class _TrackOrderDetailsState extends State<TrackOrderDetails>
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        surfaceTintColor: Colors.white,
-        automaticallyImplyLeading: false,
-        backgroundColor: Colors.white,
-        title: CustomAppBar(
-          title: "Info #${order == null ? "" : order!.id.substring(18)}",
-        ),
-      ),
       body: SafeArea(
         child: Column(
           children: <Widget>[
@@ -406,7 +396,6 @@ class _TrackOrderDetailsState extends State<TrackOrderDetails>
               unselectedLabelColor: Colors.black26,
               tabs: const [
                 Tab(text: 'Details'), // Tab 1: Details
-                Tab(text: 'Track'), // Tab 2: Breakdown
                 Tab(text: 'Breakdown'), // Tab 3: Breakdown
               ],
             ),
@@ -704,201 +693,7 @@ class _TrackOrderDetailsState extends State<TrackOrderDetails>
                         ],
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                      child: Column(
-                        children: [
-                          const SizedBox(
-                            height: 20,
-                          ),
-                          GestureDetector(
-                            onTap: () => handleConfirmStatus(
-                              "pickup",
-                              order!.pickup.address,
-                            ),
-                            child: Container(
-                              width: MediaQuery.of(context).size.width,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  width: 2,
-                                  color: accentColor,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        "Pickup Completed",
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      if (order!.orderStatus.isNotEmpty &&
-                                          order!.pickup.address ==
-                                              widget
-                                                  .data.orderStatus[0].message)
-                                        const Icon(
-                                          Icons.check_circle,
-                                          color: Colors.green,
-                                        ),
-                                    ],
-                                  ),
-                                  const SizedBox(
-                                    height: 3,
-                                  ),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          order!.pickup.address,
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                          softWrap: false,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(
-                            height: 20,
-                          ),
-                          GestureDetector(
-                            onTap: () => handleConfirmStatus(
-                              "drop",
-                              order!.drop.address,
-                            ),
-                            child: Container(
-                              width: MediaQuery.of(context).size.width,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  width: 2,
-                                  color: accentColor,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        "Drop Completed",
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      if (order!.orderStatus.length > 1 &&
-                                          order!.drop.address ==
-                                              widget
-                                                  .data.orderStatus[1].message)
-                                        const Icon(
-                                          Icons.check_circle,
-                                          color: Colors.green,
-                                        ),
-                                    ],
-                                  ),
-                                  const SizedBox(
-                                    height: 3,
-                                  ),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          order!.drop.address,
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                          softWrap: false,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          ...handleDropContainers(),
-                          const SizedBox(
-                            height: 20,
-                          ),
-                          GestureDetector(
-                            onTap: () => handleConfirmStatus("order", ""),
-                            child: Container(
-                              width: MediaQuery.of(context).size.width,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  width: 2,
-                                  color: accentColor,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Order Completed",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  const SizedBox(
-                                    height: 3,
-                                  ),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          "Complete the order",
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                          softWrap: false,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 25.0),
                       child: Column(
@@ -982,7 +777,6 @@ class _TrackOrderDetailsState extends State<TrackOrderDetails>
           ],
         ),
       ),
-      bottomNavigationBar: const CustomBottomNavigationBar(),
     );
   }
 }

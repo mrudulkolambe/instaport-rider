@@ -8,8 +8,10 @@ import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:instaport_rider/components/address_details.dart';
 import 'package:instaport_rider/components/appbar.dart';
 import 'package:instaport_rider/components/bottomnavigationbar.dart';
 import 'package:instaport_rider/constants/colors.dart';
@@ -17,7 +19,6 @@ import 'package:instaport_rider/controllers/app.dart';
 import 'package:instaport_rider/main.dart';
 import 'package:instaport_rider/models/address_model.dart';
 import 'package:instaport_rider/models/order_model.dart';
-import 'package:instaport_rider/screens/track_order_details.dart';
 import 'package:instaport_rider/services/location_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
@@ -46,6 +47,10 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
   StreamSubscription<Position>? _positionStream;
   BitmapDescriptor riderIcon = BitmapDescriptor.defaultMarker;
   Orders? order;
+  List<Column> droplocationslists = [];
+  // List<AddressDetails> lists = [];
+  late TabController _tabController;
+  final _storage = GetStorage();
 
   Future<void> _launchUrl(
       LatLng src, LatLng dest, List<Address> droplocations) async {
@@ -82,18 +87,421 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    setState(() {
-      order = widget.data;
-      CurrentLocation = LatLng(
-        appController.currentposition.value.target.latitude,
-        appController.currentposition.value.target.longitude,
-      );
-    });
-    _initializeMap();
-    _getCurrentLocation();
+    refresh();
+    _tabController = TabController(length: 2, vsync: this);
+    // _initializeMap();
+    // _getCurrentLocation();
     setcustommarkericon();
     // startForegroundLocationTracking();
     // startBackgroundLocationTracking();
+  }
+
+  void handleConfirm(String address) async {
+    final token = await _storage.read("token");
+    var data = await http.get(Uri.parse("$apiUrl/order/customer/${order!.id}"));
+    var orderData = OrderResponse.fromJson(jsonDecode(data.body));
+    var filterOrder = orderData.order.orderStatus.where((element) {
+      return element.message == address;
+    });
+    if (filterOrder.isEmpty) {
+      var headers = {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json'
+      };
+      var request = http.Request(
+          'PATCH', Uri.parse('$apiUrl/order/orderstatus/${order!.id}'));
+      request.body = json.encode({
+        "status": "processing",
+        "orderStatus": [
+          ...orderData.order.orderStatus.map((e) {
+            return e.toJson();
+          }).toList(),
+          {
+            "timestamp": DateTime.now().millisecondsSinceEpoch,
+            "message": address,
+          }
+        ]
+      });
+      request.headers.addAll(headers);
+
+      http.StreamedResponse response = await request.send();
+
+      if (response.statusCode == 200) {
+        var json = await response.stream.bytesToString();
+        var updatedOrderData = OrderResponse.fromJson(jsonDecode(json));
+        setState(() {
+          order = updatedOrderData.order;
+        });
+        Get.back();
+        if (address != "Pickup Started") {
+          Get.back();
+        }
+        Get.snackbar("Message", updatedOrderData.message);
+      } else {
+        Get.back();
+        Get.snackbar("Message", response.reasonPhrase!);
+      }
+    } else {
+      Get.back();
+      Get.snackbar("Message", "Unable to update");
+    }
+  }
+
+  void handleOrderComplete() async {
+    final token = await _storage.read("token");
+    var data = await http.get(Uri.parse("$apiUrl/order/customer/${order!.id}"));
+    var orderData = OrderResponse.fromJson(jsonDecode(data.body));
+    if (orderData.order.orderStatus.length ==
+        3 + orderData.order.droplocations.length) {
+      var headers = {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json'
+      };
+      var request = http.Request(
+          'PATCH', Uri.parse('$apiUrl/order/completed/${order!.id}'));
+      request.headers.addAll(headers);
+
+      http.StreamedResponse response = await request.send();
+
+      if (response.statusCode == 200) {
+        var json = await response.stream.bytesToString();
+        var updatedOrderData = OrderResponse.fromJson(jsonDecode(json));
+        setState(() {
+          order = updatedOrderData.order;
+        });
+        Get.back();
+        Get.snackbar("Message", updatedOrderData.message);
+      } else {
+        Get.back();
+        Get.snackbar("Message", response.reasonPhrase!);
+      }
+    } else {
+      Get.back();
+      Get.snackbar("Message", "Complete all the dropings first.");
+    }
+  }
+
+  void handleStatusUpdate() {
+    Get.dialog(Dialog(
+      insetPadding: const EdgeInsets.all(8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10.0),
+      ),
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: MediaQuery.of(context).size.width,
+        padding: const EdgeInsets.symmetric(
+          vertical: 20.0,
+          horizontal: 15.0,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10.0),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Text(
+                  "Complete",
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(
+              height: 10,
+            ),
+            SingleChildScrollView(
+                child: Column(
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    handleConfirmStatus("Pickup", order!.pickup.address);
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: order!.orderStatus.length >= 2
+                          ? accentColor.withOpacity(0.6)
+                          : accentColor,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(width: 2, color: Colors.transparent),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 12,
+                    ),
+                    child: Center(
+                      child: Text(
+                        "Pickup Completed",
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(
+                  height: 8,
+                ),
+                GestureDetector(
+                  onTap: () {
+                    handleConfirmStatus("Drop", order!.drop.address);
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: order!.orderStatus
+                              .where((element) =>
+                                  element.message == order!.drop.address)
+                              .isNotEmpty
+                          ? accentColor.withOpacity(0.6)
+                          : accentColor,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(width: 2, color: Colors.transparent),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 12,
+                    ),
+                    child: Center(
+                      child: Text(
+                        order!.drop.address,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        softWrap: true,
+                      ),
+                    ),
+                  ),
+                ),
+                ...order!.droplocations.map((e) {
+                  return Column(
+                    children: [
+                      const SizedBox(
+                        height: 8,
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          handleConfirmStatus("Drop", e.address);
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: order!.orderStatus
+                                    .where((element) =>
+                                        element.message == e.address)
+                                    .isNotEmpty
+                                ? accentColor.withOpacity(0.6)
+                                : accentColor,
+                            borderRadius: BorderRadius.circular(10),
+                            border:
+                                Border.all(width: 2, color: Colors.transparent),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 12,
+                          ),
+                          child: Center(
+                            child: Text(
+                              e.address,
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              softWrap: true,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ],
+            )),
+            const SizedBox(
+              height: 20,
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Get.back(),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(width: 2, color: accentColor),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 12,
+                      ),
+                      child: Center(
+                        child: Text(
+                          "Cancel",
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            color: accentColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              ],
+            )
+          ],
+        ),
+      ),
+    ));
+  }
+
+  void handleConfirmStatus(String task, String address) {
+    Get.dialog(Dialog(
+      insetPadding: const EdgeInsets.all(8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10.0),
+      ),
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          vertical: 20.0,
+          horizontal: 15.0,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10.0),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Text(
+                  "Confirm",
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(
+              height: 10,
+            ),
+            if (task == "start" || task == "order")
+              Row(
+                children: [
+                  Text(
+                    task == "start"
+                        ? "Confirm your start"
+                        : "Are you sure you've completed $task?",
+                    style: GoogleFonts.poppins(),
+                    softWrap: true,
+                  ),
+                ],
+              ),
+            if (task != "start" && task != 'order')
+              const SizedBox(
+                height: 5,
+              ),
+            if (task != "start" && task != 'order')
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Address",
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                    softWrap: true,
+                  ),
+                  Text(
+                    address,
+                    style: GoogleFonts.poppins(),
+                    softWrap: true,
+                  ),
+                ],
+              ),
+            const SizedBox(
+              height: 20,
+            ),
+            loading
+                ? const SpinKitFadingCircle(
+                    color: accentColor,
+                    size: 20,
+                  )
+                : Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => task == "order"
+                              ? handleOrderComplete()
+                              : handleConfirm(address),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: accentColor,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                  width: 2, color: Colors.transparent),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 12,
+                            ),
+                            child: Center(
+                              child: Text(
+                                "Yes",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 15,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(
+                        width: 10,
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => Get.back(),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(width: 2, color: accentColor),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 12,
+                            ),
+                            child: Center(
+                              child: Text(
+                                "Cancel",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 15,
+                                  color: accentColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                    ],
+                  )
+          ],
+        ),
+      ),
+    ));
   }
 
   void refresh() async {
@@ -107,10 +515,30 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
         appController.currentposition.value.target.latitude,
         appController.currentposition.value.target.longitude,
       );
+
+      _initializeMap();
+      _getCurrentLocation();
+      setcustommarkericon();
+      var data = List.from(order!.droplocations).map((e) {
+        return Column(
+          children: [
+            const SizedBox(
+              height: 10,
+            ),
+            AddressDetails(
+              address: e,
+              title: "Drop Point",
+              scheduled: order!.delivery_type != "now",
+            ),
+          ],
+        );
+      }).toList();
+      CurrentLocation = LatLng(
+        appController.currentposition.value.target.latitude,
+        appController.currentposition.value.target.longitude,
+      );
+      droplocationslists = data;
     });
-    _initializeMap();
-    _getCurrentLocation();
-    setcustommarkericon();
   }
 
   @override
@@ -232,6 +660,15 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
     });
   }
 
+  void _makePhoneCall(String phoneNumber) async {
+    final url = 'tel:$phoneNumber';
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launch(url);
+    } else {
+      throw 'Could not launch $url';
+    }
+  }
+
   void repositionGoogleMaps(LatLng src, LatLng dest) {
     LatLngBounds boundsLatLng;
     if (src.latitude > dest.latitude && src.longitude > dest.longitude) {
@@ -281,6 +718,298 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
     }
     newgooglemapcontroller
         .animateCamera(CameraUpdate.newLatLngBounds(boundsLatLng, 65));
+  }
+
+  void _openBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      showDragHandle: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      context: context,
+      builder: (_) => Scaffold(
+        resizeToAvoidBottomInset: false,
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Column(
+            children: <Widget>[
+              TabBar(
+                controller: _tabController,
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicatorWeight: 2.5,
+                enableFeedback: false,
+                labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                labelColor: Colors.black,
+                indicatorColor: accentColor,
+                unselectedLabelColor: Colors.black26,
+                tabs: const [
+                  Tab(text: 'Details'), // Tab 1: Details
+                  Tab(text: 'Breakdown'), // Tab 3: Breakdown
+                ],
+              ),
+              Expanded(
+                child: SizedBox(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 25),
+                        child: Column(
+                          children: [
+                            const SizedBox(
+                              height: 10,
+                            ),
+                            Row(
+                              children: [
+                                Text(
+                                  "Rs. ${order!.amount.toPrecision(1).toString()}",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 10,
+                            ),
+                            Row(
+                              children: [
+                                Text(
+                                  "Weight: ",
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(
+                                  width: 2,
+                                ),
+                                Text(
+                                  order!.parcel_weight,
+                                  style: GoogleFonts.poppins(),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 10,
+                            ),
+                            Row(
+                              children: [
+                                Text(
+                                  "Parcel: ",
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(
+                                  width: 2,
+                                ),
+                                Text(
+                                  order!.package,
+                                  style: GoogleFonts.poppins(),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 10,
+                            ),
+                            Row(
+                              children: [
+                                Text(
+                                  "Customer Name: ",
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(
+                                  width: 2,
+                                ),
+                                Text(
+                                  order!.customer.fullname,
+                                  style: GoogleFonts.poppins(),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 10,
+                            ),
+                            Row(
+                              children: [
+                                Text(
+                                  "Customer No.: ",
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(
+                                  width: 2,
+                                ),
+                                GestureDetector(
+                                  onTap: () => _makePhoneCall(
+                                    order!.customer.mobileno,
+                                  ),
+                                  child: Text(
+                                    order!.customer.mobileno,
+                                    style: GoogleFonts.poppins(),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 10,
+                            ),
+                            Row(
+                              children: [
+                                Text(
+                                  "Payment: ",
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(
+                                  width: 2,
+                                ),
+                                Text(
+                                  order!.payment_method,
+                                  style: GoogleFonts.poppins(),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 10,
+                            ),
+                            if (order!.orderStatus.length <= 2)
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                color: accentColor,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 15,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  "Withdraw Order (-Rs. 40)",
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const Divider(),
+                            AddressDetails(
+                              address: order!.pickup,
+                              title: "Pickup",
+                              scheduled: order!.delivery_type != "now",
+                            ),
+                            const SizedBox(
+                              height: 15,
+                            ),
+                            AddressDetails(
+                              address: order!.drop,
+                              title: "Drop",
+                              scheduled: order!.delivery_type != "now",
+                            ),
+                            ...droplocationslists.map((Column item) {
+                              return item;
+                            }).toList(),
+                            if (order!.payment_method == "cod")
+                              AddressDetails(
+                                address: order!.payment_address!,
+                                scheduled: order!.delivery_type != "now",
+                                title: "Payment Address",
+                              ),
+                            const SizedBox(
+                              height: 10,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                        child: Column(
+                          children: [
+                            const SizedBox(
+                              height: 10,
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "Instaport Commission",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  "- ₹${(order!.amount * (order!.commission / 100)).toPrecision(1).toString()}",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 7,
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "Rider Charge",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  "+ ₹${(order!.amount * ((100 - order!.commission) / 100)).toPrecision(1).toString()}",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 7,
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "Parcel Charge",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  "₹${(order!.amount).toPrecision(1).toString()}",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -441,6 +1170,25 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                       size: 22,
                                     ),
                                   ),
+                                  const SizedBox(
+                                    width: 8,
+                                  ),
+                                  IconButton(
+                                    color: Colors.white,
+                                    onPressed: () {
+                                      _openBottomSheet(context);
+                                    },
+                                    style: ButtonStyle(
+                                      backgroundColor:
+                                          MaterialStateColor.resolveWith(
+                                        (states) => accentColor,
+                                      ),
+                                    ),
+                                    icon: const Icon(
+                                      Icons.info,
+                                      size: 22,
+                                    ),
+                                  ),
                                 ],
                               ),
                             )
@@ -466,21 +1214,35 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                             key: _mapKey,
                             child: GestureDetector(
                               onTap: () {
-                                print(order!.id);
-                                Get.to(() => TrackOrderDetails(
-                                      data: order!,
-                                    ));
+                                order!.orderStatus.isEmpty
+                                    ? handleConfirmStatus(
+                                        "start",
+                                        "Pickup Started",
+                                      )
+                                    : order!.orderStatus.length ==
+                                            3 + order!.droplocations.length
+                                        ? handleConfirmStatus("order", "")
+                                        : order!.status == "delivered" ? () : handleStatusUpdate() ;
                               },
                               child: Container(
                                 height: 55,
                                 width: MediaQuery.of(context).size.width,
-                                decoration: const BoxDecoration(
-                                  color: accentColor,
+                                decoration: BoxDecoration(
+                                  color: order!.status == "delivered" ? accentColor.withOpacity(0.6) : accentColor,
                                   // borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Center(
                                   child: Text(
-                                    "Info",
+                                    order == null
+                                        ? "Loading"
+                                        : order!.orderStatus.isEmpty
+                                            ? "Start Pickup"
+                                            : order!.orderStatus.length ==
+                                                    3 +
+                                                        order!.droplocations
+                                                            .length
+                                                ? "Complete Order"
+                                                : order!.status == "delivered" ? "Completed" : "I've Reached",
                                     style: GoogleFonts.poppins(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,

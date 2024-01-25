@@ -1,15 +1,14 @@
 // ignore_for_file: empty_catches
 
+import 'package:background_location/background_location.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:instaport_rider/controllers/user.dart';
 
 class TrackingService extends GetxService {
-  final GeolocatorPlatform _geolocator = GeolocatorPlatform.instance;
   final RiderController riderController = Get.put(RiderController());
-  Rx<Position?> location = Rx<Position?>(null);
+  Rx<Location?> location = Rx<Location?>(null);
   final _storage = GetStorage();
   RxString user = RxString("");
 
@@ -37,15 +36,19 @@ class TrackingService extends GetxService {
 
   void _startListening() {
     try {
-      _geolocator
-          .getPositionStream(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.bestForNavigation,
-          distanceFilter: 10,
-        ),
-      )
-          .listen((position) async {
-        print("User: ${user.value}");
+      BackgroundLocation.setAndroidNotification(
+        title: 'Background Location',
+        message: 'Location is being tracked in the background',
+        icon: '@mipmap/ic_launcher',
+      );
+      BackgroundLocation.setAndroidConfiguration(
+        5000,
+      );
+
+      BackgroundLocation.startLocationService(distanceFilter: 10);
+
+      BackgroundLocation.getLocationUpdates((position) async {
+        print("Location ${position.latitude} - ${position.longitude}");
         DatabaseReference ref =
             FirebaseDatabase.instance.ref("rider/${user.value}");
         var token = await _storage.read("token");
@@ -59,6 +62,29 @@ class TrackingService extends GetxService {
           // _geolocator.
         }
       });
+
+      // _geolocator
+      //     .getPositionStream(
+      //   locationSettings: const LocationSettings(
+      //     accuracy: LocationAccuracy.bestForNavigation,
+      //     distanceFilter: 10,
+      //   ),
+      // )
+      //     .listen((position) async {
+      //   print("User: ${user.value}");
+        // DatabaseReference ref =
+        //     FirebaseDatabase.instance.ref("rider/${user.value}");
+        // var token = await _storage.read("token");
+        // if (token != null) {
+        //   await ref.update({
+        //     "latitude": position.latitude,
+        //     "longitude": position.longitude,
+        //   });
+        //   location.value = position;
+        // } else {
+        //   // _geolocator.
+        // }
+      // });
     } catch (e) {}
   }
 }
