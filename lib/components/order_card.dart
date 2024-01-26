@@ -166,7 +166,7 @@ class _OrderCardState extends State<OrderCard> {
                   Row(
                     children: [
                       Text(
-                        "${widget.data.droplocations.length + 2} Addresses (${widget.data.payment_method == "cod" ? "COD" : "Paid"})",
+                        "${widget.data.droplocations.length + 2} Addresses (${widget.data.payment_method == "cod" ? "COD" : "Online"})",
                         style: GoogleFonts.poppins(
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
@@ -544,7 +544,7 @@ class _OrderCardState extends State<OrderCard> {
               Row(
                 children: [
                   Text(
-                    "${widget.data.droplocations.length + 2} Addresses (${widget.data.payment_method == "cod" ? "Pending" : "Paid"})",
+                    "${widget.data.droplocations.length + 2} Addresses (${widget.data.payment_method == "cod" ? "COD" : "Online"})",
                     style: GoogleFonts.poppins(
                       fontWeight: FontWeight.w700,
                       fontSize: 12,
@@ -642,6 +642,56 @@ class _OrderCardState extends State<OrderCard> {
                       ),
                     ],
                   ),
+                  ...widget.data.droplocations.map(
+                    (e) {
+                      return Column(
+                        children: [
+                          const SizedBox(
+                                height: 10,
+                              ),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                size: 14,
+                                weight: 1.2,
+                              ),
+                              const SizedBox(
+                                width: 8,
+                              ),
+                              Expanded(
+                                child: Text(
+                                  e.address,
+                                  softWrap: true,
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(
+                            height: 5,
+                          ),
+                          Row(
+                            children: [
+                              const SizedBox(
+                                width: 22,
+                              ),
+                              Text(
+                                "${(distance / 1000).toPrecision(2)}km away",
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
+                  ).toList(),
                   const SizedBox(
                     height: 5,
                   ),

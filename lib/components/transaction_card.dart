@@ -96,7 +96,7 @@ class _TransactionCardState extends State<TransactionCard> {
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: <Widget>[
                           Text(
-                            widget.data.message,
+                            widget.data.request && widget.data.order == null ? "${widget.data.message} #${widget.data.id.substring(18)}" : widget.data.message,
                             style: GoogleFonts.poppins(
                               color:
                                   widget.data.completed && widget.data.request

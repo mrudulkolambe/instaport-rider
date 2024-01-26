@@ -39,7 +39,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
-      title: 'InstaPort Rider',
+      title: 'Instaport Rider',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: accentColor),
         useMaterial3: true,

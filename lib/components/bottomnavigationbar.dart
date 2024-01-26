@@ -2,17 +2,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:instaport_rider/constants/colors.dart';
+import 'package:instaport_rider/controllers/user.dart';
 import 'package:instaport_rider/screens/faq.dart';
 import 'package:instaport_rider/screens/home.dart';
 import 'package:instaport_rider/screens/profile.dart';
 import 'package:instaport_rider/screens/wallet.dart';
+import 'package:instaport_rider/services/tracking_service.dart';
 // import 'package:instaport_rider/screens/faq.dart';
 // import 'package:instaport_rider/screens/past_orders.dart';
 // import 'package:instaport_rider/screens/home.dart';
 // import 'package:instaport_rider/screens/profile.dart';
 
-class CustomBottomNavigationBar extends StatelessWidget {
+class CustomBottomNavigationBar extends StatefulWidget {
   const CustomBottomNavigationBar({super.key});
+
+  @override
+  State<CustomBottomNavigationBar> createState() =>
+      _CustomBottomNavigationBarState();
+}
+
+class _CustomBottomNavigationBarState extends State<CustomBottomNavigationBar> {
+  final TrackingService trackingService = Get.find<TrackingService>();
+  final RiderController riderController = Get.put(RiderController());
+  String status = "";
+  @override
+  void initState() {
+    super.initState();
+    status = trackingService.isUserSet();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,25 +65,25 @@ class CustomBottomNavigationBar extends StatelessWidget {
                 width: 30,
               ),
             ),
-            IconButton(
-              onPressed: () => {},
-              icon: Container(
-                height: 50,
-                width: 50,
-                decoration: const BoxDecoration(
-                  color: accentColor,
-                  borderRadius: BorderRadius.all(Radius.circular(25))
-                ),
-                child: Center(
-                  child: SvgPicture.string(
-                    '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M21.9844 10C21.9473 8.68893 21.8226 7.85305 21.4026 7.13974C20.8052 6.12523 19.7294 5.56066 17.5777 4.43152L15.5777 3.38197C13.8221 2.46066 12.9443 2 12 2C11.0557 2 10.1779 2.46066 8.42229 3.38197L6.42229 4.43152C4.27063 5.56066 3.19479 6.12523 2.5974 7.13974C2 8.15425 2 9.41667 2 11.9415V12.0585C2 14.5833 2 15.8458 2.5974 16.8603C3.19479 17.8748 4.27063 18.4393 6.42229 19.5685L8.42229 20.618C10.1779 21.5393 11.0557 22 12 22C12.9443 22 13.8221 21.5393 15.5777 20.618L17.5777 19.5685C19.7294 18.4393 20.8052 17.8748 21.4026 16.8603C21.8226 16.1469 21.9473 15.3111 21.9844 14" stroke="#000000" stroke-width="1.9200000000000004" stroke-linecap="round"></path> <path d="M21 7.5L17 9.5M12 12L3 7.5M12 12V21.5M12 12C12 12 14.7426 10.6287 16.5 9.75C16.6953 9.65237 17 9.5 17 9.5M17 9.5V13M17 9.5L7.5 4.5" stroke="#000000" stroke-width="1.9200000000000004" stroke-linecap="round"></path> </g></svg>',
-                    height: 28,
-                    width: 28,
-                  ),
-                ),
-              ),
-              enableFeedback: false,
-            ),
+            Center(
+                child: Switch(
+              value: status != "",
+              activeTrackColor:
+                  MaterialStateColor.resolveWith((states) => accentColor),
+              thumbColor:
+                  MaterialStateColor.resolveWith((states) => Colors.white),
+              onChanged: (value) {
+                setState(() {
+                  if (value) {
+                    status = riderController.rider.id;
+                    trackingService.setUser(riderController.rider.id);
+                  } else {
+                    status = "";
+                    trackingService.setUser("");
+                  }
+                });
+              },
+            )),
             IconButton(
               onPressed: () => Get.to(() => const FAQ()),
               icon: SvgPicture.string(

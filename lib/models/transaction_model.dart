@@ -52,7 +52,6 @@ class SingleTransaction {
   });
 
   factory SingleTransaction.fromJson(dynamic json) {
-    print(json["rider"]);
     final id = json['_id'] as String;
     final amount = json['amount'] + 0.0 as double;
     final timestamp = json['timestamp'] as int;

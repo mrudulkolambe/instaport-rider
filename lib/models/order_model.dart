@@ -25,6 +25,25 @@ class AllOrderResponse {
   }
 }
 
+class MessageResponse {
+  bool error;
+  String message;
+
+  MessageResponse({
+    required this.error,
+    required this.message,
+  });
+
+  factory MessageResponse.fromJson(dynamic json) {
+    final error = json['error'] as bool;
+    final message = json['message'] as String;
+    return MessageResponse(
+      error: error,
+      message: message,
+    );
+  }
+}
+
 class OrderResponse {
   bool error;
   String message;
@@ -47,18 +66,22 @@ class OrderResponse {
 class OrderStatus {
   int timestamp;
   String message;
+  String? image;
 
   OrderStatus({
     required this.timestamp,
     required this.message,
+    this.image,
   });
 
   factory OrderStatus.fromJson(dynamic json) {
     final timestamp = json['timestamp'] as int;
     final message = json['message'] as String;
+    final image = json['image'];
     return OrderStatus(
       timestamp: timestamp,
       message: message,
+      image: image,
     );
   }
 
@@ -66,6 +89,7 @@ class OrderStatus {
     return {
       "timestamp": timestamp,
       "message": message,
+      "image": image,
     };
   }
 }
@@ -93,7 +117,7 @@ class Orders {
   Rider? rider;
   Address? payment_address;
   List<OrderStatus> orderStatus;
-  
+
   Orders({
     required this.pickup,
     required this.drop,
