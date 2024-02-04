@@ -68,10 +68,12 @@ class _CustomBottomNavigationBarState extends State<CustomBottomNavigationBar> {
             Center(
                 child: Switch(
               value: status != "",
-              activeTrackColor:
-                  MaterialStateColor.resolveWith((states) => accentColor),
-              thumbColor:
-                  MaterialStateColor.resolveWith((states) => Colors.white),
+              activeTrackColor: MaterialStateColor.resolveWith(
+                (states) => accentColor,
+              ),
+              thumbColor: MaterialStateColor.resolveWith(
+                (states) => Colors.white,
+              ),
               onChanged: (value) {
                 setState(() {
                   if (value) {

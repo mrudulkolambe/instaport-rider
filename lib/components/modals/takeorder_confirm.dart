@@ -8,12 +8,15 @@ import 'package:instaport_rider/constants/colors.dart';
 import 'package:http/http.dart' as http;
 import 'package:instaport_rider/controllers/user.dart';
 import 'package:instaport_rider/main.dart';
+import 'package:instaport_rider/models/order_model.dart';
 import 'package:instaport_rider/models/rider_model.dart';
+import 'package:instaport_rider/screens/track_order.dart';
 
 class TakeOrderConfirm extends StatefulWidget {
   final String id;
+  final Orders data;
 
-  const TakeOrderConfirm({super.key, required this.id});
+  const TakeOrderConfirm({super.key, required this.id, required this.data});
 
   @override
   State<TakeOrderConfirm> createState() => _TakeOrderConfirmState();
@@ -35,6 +38,11 @@ class _TakeOrderConfirmState extends State<TakeOrderConfirm> {
         riderController.updateRider(data.rider);
         Get.back();
         Get.back();
+        Get.to(
+          () => TrackOrder(
+            data: widget.data,
+          ),
+        );
         Get.snackbar("Message", data.message);
       }
     } catch (e) {

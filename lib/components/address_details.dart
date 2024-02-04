@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:instaport_rider/constants/colors.dart';
 import 'package:instaport_rider/controllers/app.dart';
 import 'package:instaport_rider/models/address_model.dart';
 import 'package:instaport_rider/models/order_model.dart';
@@ -19,6 +20,8 @@ class AddressDetailsScreen extends StatefulWidget {
   final List<OrderStatus> orderStatus;
   final Address? paymentAddress;
   final String type;
+  final String status;
+  final double amount;
 
   const AddressDetailsScreen({
     super.key,
@@ -29,6 +32,8 @@ class AddressDetailsScreen extends StatefulWidget {
     required this.scheduled,
     required this.index,
     required this.type,
+    required this.amount,
+    required this.status,
     this.paymentAddress,
   });
 
@@ -101,15 +106,103 @@ class _AddressDetailsScreenState extends State<AddressDetailsScreen> {
             const SizedBox(
               width: 4,
             ),
-            if (widget.type == "cod" && widget.paymentAddress != null &&
-                widget.address.text == widget.paymentAddress!.text)
+          ],
+        ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Name: ",
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            Text(
+              widget.address.name,
+              style: GoogleFonts.poppins(),
+              softWrap: true,
+            )
+          ],
+        ),
+        const SizedBox(
+          height: 3,
+        ),
+        if (widget.status != "delivered")
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Text(
-                "(Payment Address)",
+                "Phone Number: ",
                 style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
+              const SizedBox(
+                height: 2,
+              ),
+              GestureDetector(
+                onTap: () => _makePhoneCall(
+                  widget.address.phone_number,
+                ),
+                child: Container(
+                  height: 55,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                  ),
+                  width: MediaQuery.of(context).size.width - 2 * 25,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(
+                      width: 2,
+                      color: accentColor,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.call_rounded,
+                        color: accentColor,
+                      ),
+                      const SizedBox(
+                        width: 6,
+                      ),
+                      SelectableText(
+                        widget.address.phone_number,
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w700,
+                          color: accentColor,
+                          fontSize: 16,
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        const SizedBox(
+          height: 3,
+        ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Map: ",
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            SelectableText(
+              onTap: () => _launchUrl(
+                LatLng(appController.currentposition.value.target.latitude,
+                    appController.currentposition.value.target.longitude),
+                LatLng(widget.address.latitude, widget.address.longitude),
+              ),
+              widget.address.text,
+              style: GoogleFonts.poppins(),
+              // softWrap: true,
+            )
           ],
         ),
         const SizedBox(
@@ -124,33 +217,9 @@ class _AddressDetailsScreenState extends State<AddressDetailsScreen> {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            Text(
+            SelectableText(
               widget.address.address,
               style: GoogleFonts.poppins(),
-              softWrap: true,
-            )
-          ],
-        ),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Map: ",
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            GestureDetector(
-              onTap: () => _launchUrl(
-                LatLng(appController.currentposition.value.target.latitude,
-                    appController.currentposition.value.target.longitude),
-                LatLng(widget.address.latitude, widget.address.longitude),
-              ),
-              child: Text(
-                widget.address.text,
-                style: GoogleFonts.poppins(),
-                softWrap: true,
-              ),
             )
           ],
         ),
@@ -202,31 +271,29 @@ class _AddressDetailsScreenState extends State<AddressDetailsScreen> {
               )
             ],
           ),
-        const SizedBox(
-          height: 5,
-        ),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Phone Number: ",
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w700,
-              ),
-              softWrap: true,
-            ),
-            GestureDetector(
-              onTap: () => _makePhoneCall(
-                widget.address.phone_number,
-              ),
-              child: Text(
-                widget.address.phone_number,
-                style: GoogleFonts.poppins(),
-                softWrap: true,
-              ),
-            )
-          ],
-        ),
+        if (widget.status != "delivered")
+          const SizedBox(
+            height: 5,
+          ),
+        // Column(
+        //   crossAxisAlignment: CrossAxisAlignment.start,
+        //   children: [
+        //     Text(
+        //       "Phone Number: ",
+        //       style: GoogleFonts.poppins(
+        //         fontWeight: FontWeight.w700,
+        //       ),
+        //       softWrap: true,
+        //     ),
+        //     SelectableText(
+        //       onTap: () => _makePhoneCall(
+        //         widget.address.phone_number,
+        //       ),
+        //       widget.address.phone_number,
+        //       style: GoogleFonts.poppins(),
+        //     )
+        //   ],
+        // ),
         const SizedBox(
           height: 5,
         ),
@@ -247,6 +314,16 @@ class _AddressDetailsScreenState extends State<AddressDetailsScreen> {
             )
           ],
         ),
+        if (widget.type == "cod" &&
+            widget.paymentAddress != null &&
+            widget.address.text == widget.paymentAddress!.text)
+          Text(
+            "Collect Rs. ${widget.amount} from here.",
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
       ],
     );
   }

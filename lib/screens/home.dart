@@ -36,12 +36,23 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   List<Orders> ordersSearch = [];
   bool loading = false;
   late TabController _tabController;
+  Map<String, bool> selectedStates = {};
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     handlePrefetch();
+  }
+
+  void onSelectionChanged(String orderId, bool isSelected) {
+    setState(() {
+      selectedStates[orderId] = isSelected;
+    });
+  }
+
+  int getTotalSelected() {
+    return selectedStates.values.where((isSelected) => isSelected).length;
   }
 
   void handlePrefetch() async {
@@ -109,9 +120,12 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
           surfaceTintColor: Colors.white,
           automaticallyImplyLeading: false,
           backgroundColor: Colors.white,
-          title: Text(
-            "Orders",
-            style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          title: GestureDetector(
+            onTap:() => print(selectedStates.values.where((isSelected) => isSelected).length),
+            child: Text(
+              "Orders",
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+            ),
           ),
           bottom: TabBar(
             controller: _tabController,
@@ -173,7 +187,26 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                                         physics: const BouncingScrollPhysics(),
                                         scrollDirection: Axis.vertical,
                                         itemBuilder: (context, index) {
+                                          final order = orders
+                                              .where(
+                                                (element) =>
+                                                    element.rider == null &&
+                                                    element.status == "new",
+                                              )
+                                              .toList()[index];
+                                          final isSelected =
+                                              selectedStates[order.id] == null
+                                                  ? false
+                                                  : true;
                                           return OrderCard(
+                                            isSelected: isSelected,
+                                            onSelectionChanged: (isSelected) {
+                                              print(isSelected);
+                                              onSelectionChanged(
+                                                order.id,
+                                                isSelected,
+                                              );
+                                            },
                                             data: orders
                                                 .where(
                                                   (element) =>
@@ -218,7 +251,26 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                                       physics: const BouncingScrollPhysics(),
                                       scrollDirection: Axis.vertical,
                                       itemBuilder: (context, index) {
+                                        final order = orders
+                                            .where(
+                                              (element) =>
+                                                  element.rider != null &&
+                                                  element.status ==
+                                                      "processing",
+                                            )
+                                            .toList()[index];
+                                        final isSelected =
+                                            selectedStates[order.id] == null
+                                                ? false
+                                                : true;
                                         return OrderCard(
+                                          isSelected: isSelected,
+                                          onSelectionChanged: (isSelected) {
+                                            onSelectionChanged(
+                                              order.id,
+                                              isSelected,
+                                            );
+                                          },
                                           data: orders
                                               .where(
                                                 (element) =>
@@ -265,16 +317,27 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                                       physics: const BouncingScrollPhysics(),
                                       scrollDirection: Axis.vertical,
                                       itemBuilder: (context, index) {
+                                        final order = orders
+                                            .where(
+                                              (element) =>
+                                                  element.rider != null &&
+                                                  element.status == "delivered",
+                                            )
+                                            .toList()[index];
+                                        final isSelected =
+                                            selectedStates[order.id] == null
+                                                ? false
+                                                : true;
                                         return OrderCard(
-                                          data: orders
-                                              .where(
-                                                (element) =>
-                                                    element.rider != null &&
-                                                    element.status ==
-                                                        "delivered",
-                                              )
-                                              .toList()[index],
+                                          isSelected: isSelected,
+                                          data: order,
                                           modal: true,
+                                          onSelectionChanged: (isSelected) {
+                                            onSelectionChanged(
+                                              order.id,
+                                              isSelected,
+                                            );
+                                          },
                                         );
                                       },
                                       separatorBuilder: (context, index) =>

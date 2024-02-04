@@ -14,7 +14,16 @@ import 'package:url_launcher/url_launcher.dart';
 class OrderCard extends StatefulWidget {
   final Orders data;
   final bool modal;
-  const OrderCard({super.key, required this.data, required this.modal});
+  final bool isSelected;
+  final Function(bool) onSelectionChanged;
+
+  const OrderCard({
+    super.key,
+    required this.data,
+    required this.modal,
+    required this.isSelected,
+    required this.onSelectionChanged,
+  });
 
   @override
   State<OrderCard> createState() => _OrderCardState();
@@ -29,7 +38,6 @@ class _OrderCardState extends State<OrderCard> {
   void initState() {
     super.initState();
     _handleDistance();
-    print("Drop Locations: ${widget.data.droplocations}");
   }
 
   @override
@@ -41,6 +49,7 @@ class _OrderCardState extends State<OrderCard> {
   void confirmTakeOrder() {
     Get.dialog(TakeOrderConfirm(
       id: widget.data.id,
+      data: widget.data,
     ));
   }
 
@@ -82,9 +91,8 @@ class _OrderCardState extends State<OrderCard> {
                     ),
                   ),
                   child: Text(
-                    e.address,
-                    overflow: TextOverflow.ellipsis,
-                    softWrap: false,
+                    e.text,
+                    softWrap: true,
                     style: GoogleFonts.poppins(
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
@@ -132,7 +140,6 @@ class _OrderCardState extends State<OrderCard> {
               borderRadius: BorderRadius.circular(10),
             ),
             width: MediaQuery.of(context).size.width,
-            height: MediaQuery.of(context).size.height * 0.8,
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(context).viewInsets.bottom,
             ),
@@ -145,7 +152,7 @@ class _OrderCardState extends State<OrderCard> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        "Rs. ${(widget.data.amount * 0.8).toPrecision(0)}",
+                        "Rs. ${(widget.data.amount * (100 - widget.data.commission) / 100).toPrecision(2)}",
                         style: GoogleFonts.poppins(
                           fontSize: 24,
                           fontWeight: FontWeight.w700,
@@ -207,9 +214,8 @@ class _OrderCardState extends State<OrderCard> {
                                       ),
                                     ),
                                     child: Text(
-                                      widget.data.pickup.address,
-                                      overflow: TextOverflow.ellipsis,
-                                      softWrap: false,
+                                      widget.data.pickup.text,
+                                      softWrap: true,
                                       style: GoogleFonts.poppins(
                                         fontWeight: FontWeight.w600,
                                         fontSize: 12,
@@ -267,9 +273,8 @@ class _OrderCardState extends State<OrderCard> {
                                 ),
                               ),
                               child: Text(
-                                widget.data.drop.address,
-                                overflow: TextOverflow.ellipsis,
-                                softWrap: false,
+                                widget.data.drop.text,
+                                softWrap: true,
                                 style: GoogleFonts.poppins(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 12,
@@ -299,12 +304,7 @@ class _OrderCardState extends State<OrderCard> {
                       const SizedBox(
                         height: 10,
                       ),
-                      SizedBox(
-                        height: 100,
-                        child: ListView(
-                          children: buildListWidget(),
-                        ),
-                      ),
+                      ...buildListWidget(),
                       const Divider(),
                       const SizedBox(
                         height: 5,
@@ -498,6 +498,10 @@ class _OrderCardState extends State<OrderCard> {
           Get.to(() => TrackOrder(data: widget.data));
         }
       },
+      // onLongPress: () {
+      //   widget.onSelectionChanged(!widget.isSelected);
+      //   print(!widget.isSelected);
+      // },
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -505,6 +509,7 @@ class _OrderCardState extends State<OrderCard> {
             color: accentColor,
             width: 1,
           ),
+          // color: widget.isSelected ? Colors.blue[50] : Colors.white,
           boxShadow: const [
             BoxShadow(
               color: Color(0x4F000000),
@@ -519,6 +524,14 @@ class _OrderCardState extends State<OrderCard> {
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
           child: Column(
             children: [
+              // Checkbox(
+              //   value: widget.isSelected,
+              //   onChanged: (value) {
+              //     // Call the onSelectionChanged callback when the checkbox changes
+              //     widget.onSelectionChanged(value ?? false);
+              //   },
+              // ),
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -569,7 +582,7 @@ class _OrderCardState extends State<OrderCard> {
                       ),
                       Expanded(
                         child: Text(
-                          widget.data.pickup.address,
+                          widget.data.pickup.text,
                           softWrap: true,
                           style: GoogleFonts.poppins(
                             fontWeight: FontWeight.w600,
@@ -615,7 +628,7 @@ class _OrderCardState extends State<OrderCard> {
                       ),
                       Expanded(
                         child: Text(
-                          widget.data.drop.address,
+                          widget.data.drop.text,
                           softWrap: true,
                           style: GoogleFonts.poppins(
                             fontWeight: FontWeight.w600,
@@ -647,8 +660,8 @@ class _OrderCardState extends State<OrderCard> {
                       return Column(
                         children: [
                           const SizedBox(
-                                height: 10,
-                              ),
+                            height: 10,
+                          ),
                           Row(
                             children: [
                               const Icon(
@@ -661,7 +674,7 @@ class _OrderCardState extends State<OrderCard> {
                               ),
                               Expanded(
                                 child: Text(
-                                  e.address,
+                                  e.text,
                                   softWrap: true,
                                   style: GoogleFonts.poppins(
                                     fontWeight: FontWeight.w600,

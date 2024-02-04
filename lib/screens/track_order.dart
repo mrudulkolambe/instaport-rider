@@ -15,7 +15,6 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:instaport_rider/components/address_details.dart';
 import 'package:instaport_rider/components/appbar.dart';
-import 'package:instaport_rider/components/bottomnavigationbar.dart';
 import 'package:instaport_rider/constants/colors.dart';
 import 'package:instaport_rider/controllers/app.dart';
 import 'package:instaport_rider/main.dart';
@@ -347,7 +346,50 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
     return "";
   }
 
+  void displayUploading() {
+    Get.dialog(
+      Dialog(
+        insetPadding: const EdgeInsets.all(8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10.0),
+        ),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            vertical: 20.0,
+            horizontal: 15.0,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10.0),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(
+                color: accentColor,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    "Image Is Uploading",
+                    style: GoogleFonts.poppins(),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: false,
+      useSafeArea: true,
+    );
+  }
+
   Future<String> uploadToCloudinary(File imageFile) async {
+    displayUploading();
     final url =
         Uri.parse('https://api.cloudinary.com/v1_1/dwd2fznsk/image/upload');
     final request = http.MultipartRequest('POST', url)
@@ -359,6 +401,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
       final responseString = String.fromCharCodes(responseData);
       final jsonMap = jsonDecode(responseString);
       var data = CloudinaryUpload.fromJson(jsonMap);
+      Get.back();
       return data.secureUrl;
       // handleSave();
     } else {
@@ -401,7 +444,12 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
   }
 
   void handleStatusUpdate() {
-    Get.dialog(
+    if (order!.orderStatus.length == 1) {
+      handleConfirmStatus("Pickup", order!.pickup.address);
+    } else if (order!.orderStatus.length == 2 && order!.droplocations.isEmpty) {
+      handleConfirmStatus("Drop", order!.drop.address);
+    } else {
+      Get.dialog(
         barrierDismissible: false,
         Dialog(
           insetPadding: const EdgeInsets.all(8),
@@ -440,107 +488,83 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                 SingleChildScrollView(
                     child: Column(
                   children: [
-                    GestureDetector(
-                      onTap: () {
-                        handleConfirmStatus("Pickup", order!.pickup.address);
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: order!.orderStatus.length >= 2
-                              ? accentColor.withOpacity(0.6)
-                              : accentColor,
-                          borderRadius: BorderRadius.circular(10),
-                          border:
-                              Border.all(width: 2, color: Colors.transparent),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 12,
-                        ),
-                        child: Center(
-                          child: Text(
-                            "Pickup Completed",
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
+                    if (order!.orderStatus
+                        .where(
+                            (element) => element.message == order!.drop.address)
+                        .isEmpty)
+                      GestureDetector(
+                        onTap: () {
+                          handleConfirmStatus("Drop", order!.drop.address);
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: order!.orderStatus
+                                    .where((element) =>
+                                        element.message == order!.drop.address)
+                                    .isNotEmpty
+                                ? accentColor.withOpacity(0.6)
+                                : accentColor,
+                            borderRadius: BorderRadius.circular(10),
+                            border:
+                                Border.all(width: 2, color: Colors.transparent),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 12,
+                          ),
+                          child: Center(
+                            child: Text(
+                              order!.drop.address,
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              softWrap: true,
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(
-                      height: 8,
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        handleConfirmStatus("Drop", order!.drop.address);
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: order!.orderStatus
-                                  .where((element) =>
-                                      element.message == order!.drop.address)
-                                  .isNotEmpty
-                              ? accentColor.withOpacity(0.6)
-                              : accentColor,
-                          borderRadius: BorderRadius.circular(10),
-                          border:
-                              Border.all(width: 2, color: Colors.transparent),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 12,
-                        ),
-                        child: Center(
-                          child: Text(
-                            order!.drop.address,
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            softWrap: true,
-                          ),
-                        ),
-                      ),
-                    ),
                     ...order!.droplocations.map((e) {
                       return Column(
                         children: [
                           const SizedBox(
                             height: 8,
                           ),
-                          GestureDetector(
-                            onTap: () {
-                              handleConfirmStatus("Drop", e.address);
-                            },
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: order!.orderStatus
-                                        .where((element) =>
-                                            element.message == e.address)
-                                        .isNotEmpty
-                                    ? accentColor.withOpacity(0.6)
-                                    : accentColor,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                    width: 2, color: Colors.transparent),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 12,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  e.address,
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
+                          if (order!.orderStatus
+                              .where((element) => element.message == e.address)
+                              .isEmpty)
+                            GestureDetector(
+                              onTap: () {
+                                handleConfirmStatus("Drop", e.address);
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: order!.orderStatus
+                                          .where((element) =>
+                                              element.message == e.address)
+                                          .isNotEmpty
+                                      ? accentColor.withOpacity(0.6)
+                                      : accentColor,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                      width: 2, color: Colors.transparent),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 12,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    e.address,
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    softWrap: true,
                                   ),
-                                  softWrap: true,
                                 ),
                               ),
                             ),
-                          ),
                         ],
                       );
                     }).toList(),
@@ -582,7 +606,9 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
               ],
             ),
           ),
-        ));
+        ),
+      );
+    }
   }
 
   void handleConfirmStatus(String task, String address) {
@@ -605,6 +631,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
               borderRadius: BorderRadius.circular(10.0),
             ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
@@ -623,6 +650,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                 ),
                 if (task == "start" || task == "order")
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
                       Text(
                         task == "start"
@@ -641,15 +669,24 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        "Address",
-                        style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-                        softWrap: true,
+                      Row(
+                        children: [
+                          Text(
+                            "Address",
+                            style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600),
+                            softWrap: true,
+                          ),
+                        ],
                       ),
-                      Text(
-                        address,
-                        style: GoogleFonts.poppins(),
-                        softWrap: true,
+                      Row(
+                        children: [
+                          Text(
+                            address,
+                            style: GoogleFonts.poppins(),
+                            softWrap: true,
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -760,7 +797,9 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
               time: order!.time_stamp,
               orderStatus: order!.orderStatus,
               index: e.key + 2,
-            type: order!.payment_method
+              type: order!.payment_method,
+              amount: order!.amount,
+              status: order!.status,
             ),
           ],
         );
@@ -953,362 +992,6 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
   }
 
   double sheetHeight = 350.0; // Initial height of the bottom sheet
-
-  void _openBottomSheet(BuildContext context) {
-    showModalBottomSheet(
-      showDragHandle: true,
-      isScrollControlled: true,
-      useSafeArea: true,
-      useRootNavigator: true,
-      context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (context, setState) => Container(
-          height: MediaQuery.of(context).size.height - sheetHeight,
-          child: GestureDetector(
-            onVerticalDragUpdate: (details) {
-              setState(() {
-                sheetHeight = (MediaQuery.of(context).size.height -
-                        details.globalPosition.dy)
-                    .clamp(100.0, double.infinity);
-              });
-            },
-            child: Column(
-              children: <Widget>[
-                TabBar(
-                  controller: _tabController,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  indicatorWeight: 2.5,
-                  enableFeedback: false,
-                  labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-                  labelColor: Colors.black,
-                  indicatorColor: accentColor,
-                  unselectedLabelColor: Colors.black26,
-                  tabs: const [
-                    Tab(text: 'Details'), // Tab 1: Details
-                    Tab(text: 'Breakdown'), // Tab 3: Breakdown
-                  ],
-                ),
-                Expanded(
-                  child: SizedBox(
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: [
-                        SingleChildScrollView(
-                          padding: const EdgeInsets.symmetric(horizontal: 25),
-                          child: Column(
-                            children: [
-                              const SizedBox(
-                                height: 10,
-                              ),
-                              Row(
-                                children: [
-                                  Text(
-                                    "Rs. ${order!.amount.toPrecision(1).toString()}",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(
-                                height: 6,
-                              ),
-                              Row(
-                                children: [
-                                  Text(
-                                    "Weight: ",
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(
-                                    width: 2,
-                                  ),
-                                  Text(
-                                    order!.parcel_weight,
-                                    style: GoogleFonts.poppins(),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(
-                                height: 6,
-                              ),
-                              Row(
-                                children: [
-                                  Text(
-                                    "Parcel: ",
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(
-                                    width: 2,
-                                  ),
-                                  Text(
-                                    order!.package,
-                                    style: GoogleFonts.poppins(),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(
-                                height: 6,
-                              ),
-                              Row(
-                                children: [
-                                  Text(
-                                    "Customer Name: ",
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(
-                                    width: 2,
-                                  ),
-                                  Text(
-                                    order!.customer.fullname,
-                                    style: GoogleFonts.poppins(),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(
-                                height: 6,
-                              ),
-                              Row(
-                                children: [
-                                  Text(
-                                    "Customer No.: ",
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(
-                                    width: 2,
-                                  ),
-                                  GestureDetector(
-                                    onTap: () => _makePhoneCall(
-                                      order!.customer.mobileno,
-                                    ),
-                                    child: Text(
-                                      order!.customer.mobileno,
-                                      style: GoogleFonts.poppins(),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(
-                                height: 6,
-                              ),
-                              Row(
-                                children: [
-                                  Text(
-                                    "Order ID.: ",
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(
-                                    width: 2,
-                                  ),
-                                  GestureDetector(
-                                    onTap: () => _makePhoneCall(
-                                      order!.customer.mobileno,
-                                    ),
-                                    child: Text(
-                                      "#${order!.id.substring(18)}",
-                                      style: GoogleFonts.poppins(),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(
-                                height: 6,
-                              ),
-                              Row(
-                                children: [
-                                  Text(
-                                    "Payment: ",
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(
-                                    width: 2,
-                                  ),
-                                  Text(
-                                    order!.payment_method,
-                                    style: GoogleFonts.poppins(),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(
-                                height: 6,
-                              ),
-                              Row(
-                                children: [
-                                  Text(
-                                    "Time: ",
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(
-                                    width: 2,
-                                  ),
-                                  Text(
-                                    readTimestamp(order!.time_stamp),
-                                    style: GoogleFonts.poppins(),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(
-                                height: 10,
-                              ),
-                              if (order!.orderStatus.length < 2)
-                                GestureDetector(
-                                  onTap: withdrawOrderConfirm,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(8),
-                                      color: accentColor,
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 15,
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        "Withdraw Order (-Rs. 40)",
-                                        style: GoogleFonts.poppins(
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              const Divider(),
-                              AddressDetailsScreen(
-                                  address: order!.pickup,
-                                  title: "Pickup",
-                                  scheduled: order!.delivery_type != "now",
-                                  paymentAddress: order!.payment_address,
-                                  time: order!.time_stamp,
-                                  orderStatus: order!.orderStatus,
-                                  index: 0,
-                                  type: order!.payment_method),
-                              const SizedBox(
-                                height: 15,
-                              ),
-                              const Divider(),
-                              AddressDetailsScreen(
-                                address: order!.drop,
-                                title: "Drop",
-                                scheduled: order!.delivery_type != "now",
-                                paymentAddress: order!.payment_address,
-                                time: order!.time_stamp,
-                                orderStatus: order!.orderStatus,
-                                index: 1,
-                                type: order!.payment_method,
-                              ),
-                              ...droplocationslists.map((Column item) {
-                                return item;
-                              }).toList(),
-                              const SizedBox(
-                                height: 10,
-                              ),
-                            ],
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                          child: Column(
-                            children: [
-                              const SizedBox(
-                                height: 10,
-                              ),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    "Instaport Commission",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    "- ₹${(order!.amount * (order!.commission / 100)).toPrecision(1).toString()}",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.red,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(
-                                height: 7,
-                              ),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    "Rider Charge",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    "+ ₹${(order!.amount * ((100 - order!.commission) / 100)).toPrecision(1).toString()}",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(
-                                height: 7,
-                              ),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    "Parcel Charge",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    "₹${(order!.amount).toPrecision(1).toString()}",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1562,10 +1245,12 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                       indicatorColor: accentColor,
                                       unselectedLabelColor: Colors.black26,
                                       tabs: const [
-                                        Tab(text: 'Details'), // Tab 1: Details
                                         Tab(
-                                            text:
-                                                'Breakdown'), // Tab 3: Breakdown
+                                          text: 'Details',
+                                        ),
+                                        Tab(
+                                          text: 'Breakdown',
+                                        ),
                                       ],
                                     ),
                                     Expanded(
@@ -1576,7 +1261,8 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                             SingleChildScrollView(
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                      horizontal: 25),
+                                                horizontal: 25,
+                                              ),
                                               child: Column(
                                                 children: [
                                                   const SizedBox(
@@ -1585,7 +1271,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                                   Row(
                                                     children: [
                                                       Text(
-                                                        "Rs. ${order == null ? "" : order!.amount.toPrecision(1).toString()}",
+                                                        "Rs. ${(order!.amount * ((100 - order!.commission) / 100)).toPrecision(2).toString()}",
                                                         style:
                                                             GoogleFonts.poppins(
                                                           fontSize: 28,
@@ -1665,37 +1351,41 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                                       ),
                                                     ],
                                                   ),
-                                                  const SizedBox(
-                                                    height: 6,
-                                                  ),
-                                                  Row(
-                                                    children: [
-                                                      Text(
-                                                        "Customer No.: ",
-                                                        style:
-                                                            GoogleFonts.poppins(
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(
-                                                        width: 2,
-                                                      ),
-                                                      GestureDetector(
-                                                        onTap: () =>
-                                                            _makePhoneCall(
-                                                          order!.customer
-                                                              .mobileno,
-                                                        ),
-                                                        child: Text(
-                                                          order!.customer
-                                                              .mobileno,
+                                                  if (order!.status !=
+                                                      "delivered")
+                                                    const SizedBox(
+                                                      height: 6,
+                                                    ),
+                                                  if (order!.status !=
+                                                      "delivered")
+                                                    Row(
+                                                      children: [
+                                                        Text(
+                                                          "Customer No.: ",
                                                           style: GoogleFonts
-                                                              .poppins(),
+                                                              .poppins(
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
                                                         ),
-                                                      ),
-                                                    ],
-                                                  ),
+                                                        const SizedBox(
+                                                          width: 2,
+                                                        ),
+                                                        GestureDetector(
+                                                          onTap: () =>
+                                                              _makePhoneCall(
+                                                            order!.customer
+                                                                .mobileno,
+                                                          ),
+                                                          child: Text(
+                                                            order!.customer
+                                                                .mobileno,
+                                                            style: GoogleFonts
+                                                                .poppins(),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
                                                   const SizedBox(
                                                     height: 6,
                                                   ),
@@ -1778,42 +1468,46 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                                   ),
                                                   const Divider(),
                                                   AddressDetailsScreen(
-                                                      address: order!.pickup,
-                                                      title: "Pickup",
-                                                      scheduled: order!
-                                                              .delivery_type !=
-                                                          "now",
-                                                      paymentAddress: order!
-                                                          .payment_address,
-                                                      time: order!.time_stamp,
-                                                      orderStatus:
-                                                          order!.orderStatus,
-                                                      index: 0,
-                                                      type: order!
-                                                          .payment_method),
+                                                    address: order!.pickup,
+                                                    title: "Pickup",
+                                                    scheduled:
+                                                        order!.delivery_type !=
+                                                            "now",
+                                                    paymentAddress:
+                                                        order!.payment_address,
+                                                    time: order!.time_stamp,
+                                                    orderStatus:
+                                                        order!.orderStatus,
+                                                    index: 0,
+                                                    amount: order!.amount,
+                                                    type: order!.payment_method,
+                                                    status: order!.status,
+                                                  ),
                                                   const SizedBox(
                                                     height: 15,
                                                   ),
                                                   const Divider(),
                                                   AddressDetailsScreen(
-                                                      address: order!.drop,
-                                                      title: "Drop",
-                                                      scheduled: order!
-                                                              .delivery_type !=
-                                                          "now",
-                                                      paymentAddress: order!
-                                                          .payment_address,
-                                                      time: order!.time_stamp,
-                                                      orderStatus:
-                                                          order!.orderStatus,
-                                                      index: 1,
-                                                      type: order!
-                                                          .payment_method),
+                                                    address: order!.drop,
+                                                    title: "Drop",
+                                                    scheduled:
+                                                        order!.delivery_type !=
+                                                            "now",
+                                                    paymentAddress:
+                                                        order!.payment_address,
+                                                    time: order!.time_stamp,
+                                                    orderStatus:
+                                                        order!.orderStatus,
+                                                    index: 1,
+                                                    type: order!.payment_method,
+                                                    amount: order!.amount,
+                                                    status: order!.status,
+                                                  ),
                                                   ...droplocationslists
                                                       .map((Column item) {
                                                     return item;
                                                   }).toList(),
-                                                  SizedBox(height: 20),
+                                                  const SizedBox(height: 20),
                                                   if (order!
                                                           .orderStatus.length <
                                                       2)
