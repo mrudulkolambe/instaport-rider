@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:instaport_rider/models/transaction_model.dart';
 import 'package:instaport_rider/constants/colors.dart';
-import 'package:instaport_rider/screens/track_order_details.dart';
+import 'package:instaport_rider/screens/track_order.dart';
 import 'package:intl/intl.dart';
 
 class TransactionCard extends StatefulWidget {
@@ -41,9 +41,9 @@ class _TransactionCardState extends State<TransactionCard> {
         DateTime.fromMillisecondsSinceEpoch(widget.data.timestamp);
     String formattedTime = formatDateTime(dateTime);
     return GestureDetector(
-      onTap: () => widget.data.order != null
+      onTap: () => widget.data.order != null && widget.data.message != "Order Withdraw"
           ? Get.to(
-              () => TrackOrderDetails(
+              () => TrackOrder(
                 data: widget.data.order!,
               ),
             )

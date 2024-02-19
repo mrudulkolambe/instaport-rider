@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:instaport_rider/components/distanceFutureBuilder.dart';
 import 'package:instaport_rider/components/modals/takeorder_confirm.dart';
 import 'package:instaport_rider/constants/colors.dart';
 import 'package:instaport_rider/controllers/app.dart';
@@ -38,6 +39,7 @@ class _OrderCardState extends State<OrderCard> {
   void initState() {
     super.initState();
     _handleDistance();
+    print(widget.data.droplocations);
   }
 
   @override
@@ -171,6 +173,7 @@ class _OrderCardState extends State<OrderCard> {
                     height: 10,
                   ),
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         "${widget.data.droplocations.length + 2} Addresses (${widget.data.payment_method == "cod" ? "COD" : "Online"})",
@@ -179,6 +182,12 @@ class _OrderCardState extends State<OrderCard> {
                           fontSize: 12,
                         ),
                       ),
+                      if (widget.data.delivery_type == "scheduled")
+                        Icon(
+                          Icons.timer,
+                          color: accentColor,
+                          size: 18,
+                        ),
                     ],
                   ),
                   const SizedBox(
@@ -233,13 +242,22 @@ class _OrderCardState extends State<OrderCard> {
                                 const SizedBox(
                                   width: 22,
                                 ),
-                                Text(
-                                  "${(widget.data.distance / 1000).toPrecision(2)}km away",
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 10,
-                                  ),
-                                ),
+                                GetBuilder<AppController>(
+                                    init: AppController(),
+                                    builder: (controller) {
+                                      return DistanceFutureBuilder(
+                                        src: LatLng(
+                                          controller.currentposition.value
+                                              .target.latitude,
+                                          controller.currentposition.value
+                                              .target.longitude,
+                                        ),
+                                        dest: LatLng(
+                                          widget.data.pickup.latitude,
+                                          widget.data.pickup.longitude,
+                                        ),
+                                      );
+                                    }),
                               ],
                             )
                           ],
@@ -292,11 +310,14 @@ class _OrderCardState extends State<OrderCard> {
                           const SizedBox(
                             width: 22,
                           ),
-                          Text(
-                            "${(distance / 1000).toPrecision(2)}km away",
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w500,
-                              fontSize: 10,
+                          DistanceFutureBuilder(
+                            src: LatLng(
+                              widget.data.pickup.latitude,
+                              widget.data.pickup.latitude,
+                            ),
+                            dest: LatLng(
+                              widget.data.drop.latitude,
+                              widget.data.drop.longitude,
                             ),
                           ),
                         ],
@@ -429,24 +450,27 @@ class _OrderCardState extends State<OrderCard> {
                               ),
                             ),
                           ),
-                          Container(
-                            width:
-                                MediaQuery.of(context).size.width * 0.48 - 25,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              color: Colors.transparent,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                width: 2,
-                                color: accentColor,
+                          GestureDetector(
+                            onTap: () => Get.back(),
+                            child: Container(
+                              width:
+                                  MediaQuery.of(context).size.width * 0.48 - 25,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  width: 2,
+                                  color: accentColor,
+                                ),
                               ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                "Close",
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
+                              child: Center(
+                                child: Text(
+                                  "Close",
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
                                 ),
                               ),
                             ),
@@ -484,7 +508,7 @@ class _OrderCardState extends State<OrderCard> {
 
     if (!_isMounted) return;
     setState(() {
-      distance = data.rows[0].elements[0].distance!.value!;
+      distance = data;
     });
   }
 
@@ -555,6 +579,7 @@ class _OrderCardState extends State<OrderCard> {
                 height: 10,
               ),
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     "${widget.data.droplocations.length + 2} Addresses (${widget.data.payment_method == "cod" ? "COD" : "Online"})",
@@ -563,6 +588,12 @@ class _OrderCardState extends State<OrderCard> {
                       fontSize: 12,
                     ),
                   ),
+                  if (widget.data.delivery_type == "scheduled")
+                    Icon(
+                      Icons.timer,
+                      color: accentColor,
+                      size: 18,
+                    ),
                 ],
               ),
               const SizedBox(
@@ -600,13 +631,22 @@ class _OrderCardState extends State<OrderCard> {
                       const SizedBox(
                         width: 22,
                       ),
-                      Text(
-                        "${(widget.data.distance / 1000).toPrecision(2)}km away",
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 10,
-                        ),
-                      ),
+                      GetBuilder<AppController>(
+                          init: AppController(),
+                          builder: (controller) {
+                            return DistanceFutureBuilder(
+                              src: LatLng(
+                                controller
+                                    .currentposition.value.target.latitude,
+                                controller
+                                    .currentposition.value.target.longitude,
+                              ),
+                              dest: LatLng(
+                                widget.data.pickup.latitude,
+                                widget.data.pickup.longitude,
+                              ),
+                            );
+                          }),
                     ],
                   )
                 ],
@@ -646,65 +686,106 @@ class _OrderCardState extends State<OrderCard> {
                       const SizedBox(
                         width: 22,
                       ),
-                      Text(
-                        "${(distance / 1000).toPrecision(2)}km away",
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 10,
+                      DistanceFutureBuilder(
+                        src: LatLng(
+                          widget.data.pickup.latitude,
+                          widget.data.pickup.longitude,
                         ),
-                      ),
+                        dest: LatLng(
+                          widget.data.drop.latitude,
+                          widget.data.drop.longitude,
+                        ),
+                      )
                     ],
                   ),
-                  ...widget.data.droplocations.map(
-                    (e) {
-                      return Column(
-                        children: [
-                          const SizedBox(
-                            height: 10,
-                          ),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.arrow_forward_ios_rounded,
-                                size: 14,
-                                weight: 1.2,
-                              ),
-                              const SizedBox(
-                                width: 8,
-                              ),
-                              Expanded(
-                                child: Text(
-                                  e.text,
-                                  softWrap: true,
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(
-                            height: 5,
-                          ),
-                          Row(
-                            children: [
-                              const SizedBox(
-                                width: 22,
-                              ),
-                              Text(
-                                "${(distance / 1000).toPrecision(2)}km away",
+                  if (widget.data.droplocations.length > 1)
+                    Column(
+                      children: [
+                        const SizedBox(
+                          height: 2,
+                        ),
+                        Row(
+                          children: [
+                            RotatedBox(
+                              quarterTurns: 1,
+                              child: Text(
+                                "...",
                                 style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: 10,
+                                    fontSize: 30, letterSpacing: 2),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 2,
+                        ),
+                      ],
+                    ),
+                  if (widget.data.droplocations.isNotEmpty)
+                    Column(
+                      children: [
+                        const SizedBox(
+                          height: 10,
+                        ),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 14,
+                              weight: 1.2,
+                            ),
+                            const SizedBox(
+                              width: 8,
+                            ),
+                            Expanded(
+                              child: Text(
+                                widget.data.droplocations.last.text,
+                                softWrap: true,
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
                                 ),
                               ),
-                            ],
-                          ),
-                        ],
-                      );
-                    },
-                  ).toList(),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 5,
+                        ),
+                        Row(
+                          children: [
+                            const SizedBox(
+                              width: 22,
+                            ),
+                            DistanceFutureBuilder(
+                              src: widget.data.droplocations.length >= 2
+                                  ? LatLng(
+                                      widget
+                                          .data
+                                          .droplocations[
+                                              widget.data.droplocations.length -
+                                                  2]
+                                          .latitude,
+                                      widget
+                                          .data
+                                          .droplocations[
+                                              widget.data.droplocations.length -
+                                                  2]
+                                          .longitude,
+                                    )
+                                  : LatLng(
+                                      widget.data.drop.latitude,
+                                      widget.data.drop.longitude,
+                                    ),
+                              dest: LatLng(
+                                widget.data.droplocations.last.latitude,
+                                widget.data.droplocations.last.longitude,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   const SizedBox(
                     height: 5,
                   ),

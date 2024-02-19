@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -21,6 +22,7 @@ import 'package:instaport_rider/main.dart';
 import 'package:instaport_rider/models/address_model.dart';
 import 'package:instaport_rider/models/cloudinary_upload.dart';
 import 'package:instaport_rider/models/order_model.dart';
+import 'package:instaport_rider/models/places_model.dart';
 import 'package:instaport_rider/screens/home.dart';
 import 'package:instaport_rider/services/location_service.dart';
 import 'package:instaport_rider/utils/timeformatter.dart';
@@ -52,9 +54,13 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
   StreamSubscription<Position>? _positionStream;
   BitmapDescriptor riderIcon = BitmapDescriptor.defaultMarker;
   Orders? order;
+  OnlyDetails? realtime;
   List<Column> droplocationslists = [];
   late TabController _tabController;
   final _storage = GetStorage();
+  Timer? _timer;
+  late StreamSubscription<DatabaseEvent> _databaseListener;
+  DatabaseReference ref = FirebaseDatabase.instance.ref();
 
   Future<void> _launchUrl(
       LatLng src, LatLng dest, List<Address> droplocations) async {
@@ -91,16 +97,16 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    refresh();
+    refreshMain();
+    _timer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      refresh();
+    });
+    _initializeMap();
     _tabController = TabController(length: 2, vsync: this);
-    // _initializeMap();
-    // _getCurrentLocation();
     setcustommarkericon();
-    // startForegroundLocationTracking();
-    // startBackgroundLocationTracking();
   }
 
-  void handleConfirm(String address) async {
+  void handleConfirm(String address, String key, Address addressObj) async {
     final token = await _storage.read("token");
     var data = await http.get(Uri.parse("$apiUrl/order/customer/${order!.id}"));
     var orderData = OrderResponse.fromJson(jsonDecode(data.body));
@@ -142,6 +148,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
               "timestamp": DateTime.now().millisecondsSinceEpoch,
               "message": address,
               "image": img,
+              "key": key
             }
           ]
         });
@@ -158,18 +165,14 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
         setState(() {
           order = updatedOrderData.order;
         });
-        Get.back();
-        if (address != "Pickup Started") {
-          Get.back();
-        }
-        Get.snackbar("Message", updatedOrderData.message);
-      } else {
-        Get.back();
-        Get.snackbar("Message", response.reasonPhrase!);
-      }
+        refresh();
+      } else {}
     } else {
-      Get.back();
+      Get.back(closeOverlays: true);
       Get.snackbar("Message", "Unable to update");
+    }
+    while (Get.isDialogOpen! && !Get.isSnackbarOpen) {
+      Get.back();
     }
   }
 
@@ -181,8 +184,11 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
             .patch(Uri.parse("$apiUrl/order/withdraw/${order!.id}"), headers: {
           "Authorization": "Bearer $token",
         });
-        Get.back();
+        while (Get.isDialogOpen! && !Get.isSnackbarOpen) {
+          Get.back();
+        }
         var orderData = MessageResponse.fromJson(jsonDecode(data.body));
+        Get.to(() => const Home());
         Get.snackbar("Message", orderData.message);
       } else {
         Get.snackbar("Message", "Cannot withdraw order");
@@ -259,9 +265,9 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                 ),
                                 child: Center(
                                   child: Text(
-                                    "Proceed Withdrawal",
+                                    "Proceed",
                                     style: GoogleFonts.poppins(
-                                      fontSize: 12,
+                                      fontSize: 14,
                                       color: Colors.white,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -291,7 +297,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                   child: Text(
                                     "Cancel",
                                     style: GoogleFonts.poppins(
-                                      fontSize: 12,
+                                      fontSize: 14,
                                       color: accentColor,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -367,7 +373,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(
+              const CircularProgressIndicator(
                 color: accentColor,
               ),
               Row(
@@ -443,11 +449,32 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
     }
   }
 
-  void handleStatusUpdate() {
+  void handleStatusUpdate() async {
     if (order!.orderStatus.length == 1) {
-      handleConfirmStatus("Pickup", order!.pickup.address);
+      var posi = await _getCurrentLocationSingle();
+      var distance = await LocationService().fetchDistance(
+          LatLng(posi.latitude, posi.longitude),
+          LatLng(order!.pickup.latitude, order!.pickup.longitude));
+      if (distance <= 2500) {
+        handleConfirmStatus(
+          "Pickup",
+          order!.pickup,
+        );
+      } else {
+        Get.snackbar("Error",
+            "Your location should be in the range of 2.5km from the location");
+      }
     } else if (order!.orderStatus.length == 2 && order!.droplocations.isEmpty) {
-      handleConfirmStatus("Drop", order!.drop.address);
+      var posi = await _getCurrentLocationSingle();
+      var distance = await LocationService().fetchDistance(
+          LatLng(posi.latitude, posi.longitude),
+          LatLng(order!.drop.latitude, order!.drop.longitude));
+      if (distance <= 2500) {
+        handleConfirmStatus("Drop", order!.drop);
+      } else {
+        Get.snackbar(
+            "Error",   "Your location should be in the range of 2.5km from the location");
+      }
     } else {
       Get.dialog(
         barrierDismissible: false,
@@ -489,18 +516,28 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                     child: Column(
                   children: [
                     if (order!.orderStatus
-                        .where(
-                            (element) => element.message == order!.drop.address)
+                        .where((element) => element.key == order!.drop.key)
                         .isEmpty)
                       GestureDetector(
-                        onTap: () {
-                          handleConfirmStatus("Drop", order!.drop.address);
+                        onTap: () async {
+                          var posi = await _getCurrentLocationSingle();
+                          var distance = await LocationService().fetchDistance(
+                              LatLng(posi.latitude, posi.longitude),
+                              LatLng(
+                                  order!.drop.latitude, order!.drop.longitude));
+                          if (distance <= 2500) {
+                            handleConfirmStatus("Drop", order!.drop);
+                          } else {
+                            print(distance);
+                            Get.snackbar("Error",
+                                  "Your location should be in the range of 2.5km from the location");
+                          }
                         },
                         child: Container(
                           decoration: BoxDecoration(
                             color: order!.orderStatus
                                     .where((element) =>
-                                        element.message == order!.drop.address)
+                                        element.key == order!.drop.key)
                                     .isNotEmpty
                                 ? accentColor.withOpacity(0.6)
                                 : accentColor,
@@ -531,17 +568,17 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                             height: 8,
                           ),
                           if (order!.orderStatus
-                              .where((element) => element.message == e.address)
+                              .where((element) => element.key == e.key)
                               .isEmpty)
                             GestureDetector(
                               onTap: () {
-                                handleConfirmStatus("Drop", e.address);
+                                handleConfirmStatus("Drop", e);
                               },
                               child: Container(
                                 decoration: BoxDecoration(
                                   color: order!.orderStatus
-                                          .where((element) =>
-                                              element.message == e.address)
+                                          .where(
+                                              (element) => element.key == e.key)
                                           .isNotEmpty
                                       ? accentColor.withOpacity(0.6)
                                       : accentColor,
@@ -611,7 +648,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
     }
   }
 
-  void handleConfirmStatus(String task, String address) {
+  void handleConfirmStatus(String task, Address address) {
     Get.dialog(
         barrierDismissible: false,
         Dialog(
@@ -682,7 +719,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                       Row(
                         children: [
                           Text(
-                            address,
+                            address.address,
                             style: GoogleFonts.poppins(),
                             softWrap: true,
                           ),
@@ -704,7 +741,8 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                             child: GestureDetector(
                               onTap: () => task == "order"
                                   ? handleOrderComplete()
-                                  : handleConfirm(address),
+                                  : handleConfirm(
+                                      address.address, address.key, address),
                               child: Container(
                                 decoration: BoxDecoration(
                                   color: accentColor,
@@ -767,7 +805,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
         ));
   }
 
-  void refresh() async {
+  void refreshMain() async {
     var data =
         await http.get(Uri.parse("$apiUrl/order/customer/${widget.data.id}"));
     var orderData = OrderResponse.fromJson(jsonDecode(data.body));
@@ -779,7 +817,6 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
         appController.currentposition.value.target.longitude,
       );
 
-      _initializeMap();
       _getCurrentLocation();
       setcustommarkericon();
       var data = List.from(order!.droplocations).asMap().entries.map((e) {
@@ -790,6 +827,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
             ),
             const Divider(),
             AddressDetailsScreen(
+              key: Key((e.key + 2).toString()),
               address: e.value,
               title: "Drop Point",
               scheduled: order!.delivery_type != "now",
@@ -810,12 +848,246 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
       );
       droplocationslists = data;
     });
+    if (orderData.order.rider != null &&
+        orderData.order.status != "delivered") {
+      _databaseListener = ref
+          .child('orders/${widget.data.id}')
+          .onValue
+          .listen((DatabaseEvent event) {
+        final data = event.snapshot.value;
+        final dynamic snapshotValue = json.encode(data);
+        if (snapshotValue != null) {
+          while (Get.isDialogOpen! && !Get.isSnackbarOpen) {
+            Get.back();
+          }
+          final data = RealtimeOrder.fromJson(jsonDecode(snapshotValue));
+          if (data.modified == "data") {
+            Get.dialog(
+              Dialog(
+                backgroundColor: Colors.white,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 20,
+                  ),
+                  height: 255,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        children: [
+                          Text(
+                            "Update",
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 20,
+                            ),
+                          ),
+                          SizedBox(
+                            height: 8,
+                          ),
+                          Text(
+                            "Your order has been update by the customer the amount is Rs.${data.order.amount}",
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Column(
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              FirebaseDatabase.instance
+                                  .ref('/orders/${order!.id}')
+                                  .update({"modified": ""}).then((value) {
+                                if (Get.isDialogOpen! && !Get.isSnackbarOpen) {
+                                  Get.back();
+                                }
+                              });
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                  color: accentColor,
+                                  borderRadius: BorderRadius.circular(8)),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 15,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  "Accept",
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(
+                            height: 8,
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              if (order!.orderStatus.length >= 2) {
+                                Get.snackbar("Error",
+                                    "You cannot withdraw the order if the item is picked!");
+                              } else {
+                                FirebaseDatabase.instance
+                                    .ref('/orders/${order!.id}')
+                                    .update({"modified": ""}).then((value) {
+                                  withdrawOrderConfirm();
+                                });
+                              }
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                  color: accentColor,
+                                  borderRadius: BorderRadius.circular(8)),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 15,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  "Withdraw",
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              barrierDismissible: false,
+            );
+          } else if (data.modified == "cancel") {
+            Get.dialog(
+              Dialog(
+                backgroundColor: Colors.white,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 20,
+                  ),
+                  height: 200,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        children: [
+                          Text(
+                            "Cancel",
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 20,
+                            ),
+                          ),
+                          SizedBox(
+                            height: 8,
+                          ),
+                          Text(
+                            "Your order has been cancelled by the customer",
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          FirebaseDatabase.instance
+                              .ref('/orders/${order!.id}')
+                              .update({"modified": ""}).then((value) {
+                            Get.to(() => const Home());
+                          });
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                              color: accentColor,
+                              borderRadius: BorderRadius.circular(8)),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 15,
+                          ),
+                          child: Center(
+                            child: Text(
+                              "Okay",
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              barrierDismissible: false,
+            );
+          }
+          setState(() {
+            realtime = data.order;
+          });
+        }
+      });
+    } else {
+      print("this is not correct");
+    }
+  }
+
+  void refresh() async {
+    var data =
+        await http.get(Uri.parse("$apiUrl/order/customer/${widget.data.id}"));
+    var orderData = OrderResponse.fromJson(jsonDecode(data.body));
+    setState(() {
+      order = orderData.order;
+      var data = List.from(order!.droplocations).asMap().entries.map((e) {
+        return Column(
+          children: [
+            const SizedBox(
+              height: 10,
+            ),
+            const Divider(),
+            AddressDetailsScreen(
+              key: Key((e.key + 2).toString()),
+              address: e.value,
+              title: "Drop Point",
+              scheduled: order!.delivery_type != "now",
+              paymentAddress: order!.payment_address,
+              time: order!.time_stamp,
+              orderStatus: order!.orderStatus,
+              index: e.key + 2,
+              type: order!.payment_method,
+              amount: order!.amount,
+              status: order!.status,
+            ),
+          ],
+        );
+      }).toList();
+      droplocationslists = data;
+    });
   }
 
   @override
   void dispose() {
-    super.dispose();
+    _timer?.cancel();
     _positionStream!.cancel();
+    newgooglemapcontroller.dispose();
+    if (order!.rider != null) {
+      ref.onValue.drain();
+      _databaseListener.cancel();
+    }
+    super.dispose();
     // BackgroundLocation.stopLocationService();
   }
 
@@ -916,19 +1188,17 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
           event.latitude,
           event.longitude,
         );
+        appController.updateCurrentPosition(
+            CameraPosition(target: LatLng(event.latitude, event.longitude)));
       });
-      // newgooglemapcontroller.animateCamera(
-      //   CameraUpdate.newCameraPosition(
-      //     CameraPosition(
-      //       zoom: 13.5,
-      //       target: LatLng(
-      //         event.latitude,
-      //         event.longitude,
-      //       ),
-      //     ),
-      //   ),
-      // );
     });
+  }
+
+  Future<Position> _getCurrentLocationSingle() async {
+    var posi = await Geolocator.getCurrentPosition();
+    appController.updateCurrentPosition(
+        CameraPosition(target: LatLng(posi.latitude, posi.longitude)));
+    return posi;
   }
 
   void _makePhoneCall(String phoneNumber) async {
@@ -1061,7 +1331,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                               size: 50,
                             ),
                             Text(
-                              "Setting up the ride!",
+                              "Loading",
                               style: GoogleFonts.poppins(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
@@ -1674,11 +1944,32 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                               order!.orderStatus.isEmpty
                                   ? handleConfirmStatus(
                                       "start",
-                                      "Pickup Started",
-                                    )
+                                      Address(
+                                          text: "",
+                                          latitude: 0.0,
+                                          longitude: 0.0,
+                                          building_and_flat: "",
+                                          floor_and_wing: "",
+                                          instructions: "",
+                                          phone_number: "",
+                                          address: "Pickup Started",
+                                          key: "pickup started",
+                                          name: ""))
                                   : order!.orderStatus.length ==
                                           3 + order!.droplocations.length
-                                      ? handleConfirmStatus("order", "")
+                                      ? handleConfirmStatus(
+                                          "order",
+                                          Address(
+                                              text: "",
+                                              latitude: 0.0,
+                                              longitude: 0.0,
+                                              building_and_flat: "",
+                                              floor_and_wing: "",
+                                              instructions: "",
+                                              phone_number: "",
+                                              address: "",
+                                              key: "completed",
+                                              name: ""))
                                       : order!.status == "delivered"
                                           ? ()
                                           : handleStatusUpdate();
@@ -1700,14 +1991,16 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                       ? "Loading"
                                       : order!.orderStatus.isEmpty
                                           ? "Start Pickup"
-                                          : order!.orderStatus.length ==
-                                                  3 +
-                                                      order!
-                                                          .droplocations.length
-                                              ? "Complete Order"
-                                              : order!.status == "delivered"
-                                                  ? "Completed"
-                                                  : "I've Reached",
+                                          : order!.orderStatus.length == 1
+                                              ? "Parcel Picked Up"
+                                              : order!.orderStatus.length ==
+                                                      3 +
+                                                          order!.droplocations
+                                                              .length
+                                                  ? "Complete Order"
+                                                  : order!.status == "delivered"
+                                                      ? "Completed"
+                                                      : "Parcel Dropped",
                                   style: GoogleFonts.poppins(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,

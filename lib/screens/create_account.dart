@@ -35,7 +35,8 @@ class _CreateAccountState extends State<CreateAccount> {
           headers: {'Authorization': 'Bearer $token'});
       final userData = RiderDataResponse.fromJson(jsonDecode(riderData.body));
       riderController.updateRider(userData.rider);
-      DatabaseReference databaseReference = FirebaseDatabase.instance.ref("/rider/${userData.rider.id}");
+      DatabaseReference databaseReference =
+          FirebaseDatabase.instance.ref("/rider/${userData.rider.id}");
       // trackingService.setUser(userData.rider.id);
       databaseReference.set({
         'timestamp': DateTime.now().toString(),
@@ -43,13 +44,8 @@ class _CreateAccountState extends State<CreateAccount> {
         'latitude': 0.0,
         'longitude': 0.0,
       }).then((_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Please Login Now!'),
-          ),
-        );
-        print(
-            'Entry with user ID as custom ID saved to the database successfully');
+        Get.snackbar("Success", "You can proceed with your login!");
+        Get.to(() => SplashScreen());
       }).catchError((error) {
         print('Error saving entry to the database: $error');
       });

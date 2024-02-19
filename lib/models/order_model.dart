@@ -67,21 +67,25 @@ class OrderStatus {
   int timestamp;
   String message;
   String? image;
+  String key;
 
   OrderStatus({
     required this.timestamp,
     required this.message,
+    required this.key,
     this.image,
   });
 
   factory OrderStatus.fromJson(dynamic json) {
     final timestamp = json['timestamp'] as int;
     final message = json['message'] as String;
+    final key = json['key'] == null ? "" : json['key'] as String;
     final image = json['image'];
     return OrderStatus(
       timestamp: timestamp,
       message: message,
       image: image,
+      key: key,
     );
   }
 
@@ -90,6 +94,7 @@ class OrderStatus {
       "timestamp": timestamp,
       "message": message,
       "image": image,
+      "key": key,
     };
   }
 }
@@ -110,7 +115,7 @@ class Orders {
   User customer;
   String package;
   int time_stamp;
-  int parcel_value;
+  double parcel_value;
   double amount;
   double distance;
   double commission;
@@ -178,7 +183,7 @@ class Orders {
     final time_stamp = json['time_stamp'] as int;
     final amount = json['amount'] + 0.0 as double;
     final commission = json['commission'] + 0.0 as double;
-    final parcel_value = json['parcel_value'];
+    final parcel_value = json['parcel_value'] + 0.0 as double;
     final payment_address = json['payment_address'] == null
         ? null
         : Address.fromJson(json['payment_address']);
@@ -235,6 +240,33 @@ class Orders {
       "distance": distance,
       "orderStatus": orderStatus,
       "rider": rider
+    };
+  }
+}
+
+class OnlyDetails {
+  String id;
+  double amount;
+
+  OnlyDetails({
+    required this.id,
+    required this.amount,
+  });
+
+  factory OnlyDetails.fromJson(dynamic json) {
+    final id = json['_id'] as String;
+    final amount = json['amount'] + 0.0 as double;
+    return OnlyDetails(
+      id: id,
+      amount: amount,
+    );
+    // distance: distance.rows[0].elements[0].distance.value);
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      "id": id,
+      "amount": amount,
     };
   }
 }

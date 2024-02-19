@@ -94,6 +94,12 @@ class _SplashScreenState extends State<SplashScreen> {
     super.dispose();
   }
 
+void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _storage.remove("hidden_orders");
+    }
+  }
+  
   void _getCurrentLocation() async {
     var position = await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,

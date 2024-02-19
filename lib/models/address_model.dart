@@ -9,6 +9,7 @@ class Address {
   String instructions;
   String phone_number;
   String address;
+  String key;
   String name;
   String? time;
   String? date;
@@ -22,6 +23,7 @@ class Address {
     required this.instructions,
     required this.phone_number,
     required this.address,
+    required this.key,
     required this.name,
     this.date,
     this.time,
@@ -29,12 +31,13 @@ class Address {
 
   factory Address.fromJson(dynamic json) {
     final text = json['text'] as String;
-    final latitude = json['latitude'] as double;
-    final longitude = json['longitude'] as double;
+    final latitude = json['latitude'] + 0.0 as double;
+    final longitude = json['longitude'] + 0.0 as double;
     final building_and_flat = json['building_and_flat'] as String;
     final floor_and_wing = json['floor_and_wing'] as String;
     final instructions = json['instructions'] as String;
     final phone_number = json['phone_number'] as String;
+    final key = json['key'] as String;
     final address = json['address'] as String;
     final name = json['name'] as String;
     final time = json['date'];
@@ -45,6 +48,7 @@ class Address {
       longitude: longitude,
       building_and_flat: building_and_flat,
       floor_and_wing: floor_and_wing,
+      key: key,
       instructions: instructions,
       phone_number: phone_number,
       address: address,
@@ -61,6 +65,7 @@ class Address {
       'longitude': longitude,
       'building_and_flat': building_and_flat,
       'floor_and_wing': floor_and_wing,
+      'key': key,
       'instructions': instructions,
       'phone_number': phone_number,
       'address': address,

@@ -1,3 +1,5 @@
+import 'package:instaport_rider/models/order_model.dart';
+
 class PlacesResponse {
   String status;
   List<dynamic> predictions;
@@ -43,8 +45,23 @@ class LocationData {
   
   factory LocationData.fromJson(Map<String, dynamic> json) {
     return LocationData(
-      latitude: json['lat'] as double,
-      longitude: json['lng'] as double,
+      latitude: json['lat'] + 0.0 as double,
+      longitude: json['lng'] + 0.0 as double,
+    );
+  }
+}
+
+class RealtimeOrder{
+  String modified;
+  OnlyDetails order;
+
+    RealtimeOrder(
+      {required this.modified, required this.order});
+  
+  factory RealtimeOrder.fromJson(Map<String, dynamic> json) {
+    return RealtimeOrder(
+      modified: json['modified'] as String,
+      order: OnlyDetails.fromJson(json["order"]),
     );
   }
 }

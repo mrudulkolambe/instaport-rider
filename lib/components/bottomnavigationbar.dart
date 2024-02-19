@@ -1,17 +1,19 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:instaport_rider/constants/colors.dart';
 import 'package:instaport_rider/controllers/user.dart';
+import 'package:instaport_rider/main.dart';
+import 'package:instaport_rider/models/rider_model.dart';
 import 'package:instaport_rider/screens/faq.dart';
 import 'package:instaport_rider/screens/home.dart';
 import 'package:instaport_rider/screens/profile.dart';
 import 'package:instaport_rider/screens/wallet.dart';
 import 'package:instaport_rider/services/tracking_service.dart';
-// import 'package:instaport_rider/screens/faq.dart';
-// import 'package:instaport_rider/screens/past_orders.dart';
-// import 'package:instaport_rider/screens/home.dart';
-// import 'package:instaport_rider/screens/profile.dart';
+import 'package:http/http.dart' as http;
 
 class CustomBottomNavigationBar extends StatefulWidget {
   const CustomBottomNavigationBar({super.key});
@@ -21,14 +23,14 @@ class CustomBottomNavigationBar extends StatefulWidget {
       _CustomBottomNavigationBarState();
 }
 
+final _storage = GetStorage();
+
 class _CustomBottomNavigationBarState extends State<CustomBottomNavigationBar> {
   final TrackingService trackingService = Get.find<TrackingService>();
   final RiderController riderController = Get.put(RiderController());
-  String status = "";
   @override
   void initState() {
     super.initState();
-    status = trackingService.isUserSet();
   }
 
   @override
@@ -67,20 +69,46 @@ class _CustomBottomNavigationBarState extends State<CustomBottomNavigationBar> {
             ),
             Center(
                 child: Switch(
-              value: status != "",
+              value: riderController.rider.status != "offline",
               activeTrackColor: MaterialStateColor.resolveWith(
                 (states) => accentColor,
               ),
               thumbColor: MaterialStateColor.resolveWith(
                 (states) => Colors.white,
               ),
-              onChanged: (value) {
+              onChanged: (value) async {
+                final token = await _storage.read("token");
+                var headers = {
+                  'Authorization': 'Bearer $token',
+                  'Content-Type': 'application/json'
+                };
+                var request = http.Request(
+                  'PATCH',
+                  Uri.parse(
+                    '$apiUrl/rider/update',
+                  ),
+                );
+                request.body = json.encode(
+                  {
+                    "status": value ? "online" : "offline",
+                  },
+                );
+                request.headers.addAll(headers);
+                http.StreamedResponse response = await request.send();
+                if (response.statusCode == 200) {
+                  var json = await response.stream.bytesToString();
+                  var data = RiderDataResponse.fromJson(jsonDecode(json));
+                  riderController.updateRider(data.rider);
+                } else {
+                  print(response.reasonPhrase);
+                }
+
                 setState(() {
                   if (value) {
-                    status = riderController.rider.id;
+                    riderController.rider.status = "online";
                     trackingService.setUser(riderController.rider.id);
                   } else {
-                    status = "";
+                    riderController.rider.status = "offline";
                     trackingService.setUser("");
                   }
                 });
