@@ -136,6 +136,7 @@ void didChangeAppLifecycleState(AppLifecycleState state) {
             userData.rider.status == "disabled") {
           Get.to(() => const DisabledScreen());
         } else {
+          print("object");
           handleFetchPrice();
           riderController.updateRider(userData.rider);
           trackingService.setUser(userData.rider.id);

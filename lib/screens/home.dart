@@ -99,9 +99,6 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
             appController.currentposition.value.target.longitude),
         LatLng(order.pickup.latitude, order.pickup.longitude),
       );
-      // order.distance = data.rows[0].elements[0].distance != null
-      //     ? data.rows[0].elements[0].distance!.value!
-      //     : 0;
     });
     ordersData.sort((a, b) {
       return a.distance.compareTo(b.distance);

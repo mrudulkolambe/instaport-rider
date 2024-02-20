@@ -176,14 +176,18 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
     }
   }
 
-  void withdrawOrder() async {
+  void withdrawOrder(String type) async {
     try {
       final token = await _storage.read("token");
       if (order != null && order!.orderStatus.length < 2) {
-        var data = await http
-            .patch(Uri.parse("$apiUrl/order/withdraw/${order!.id}"), headers: {
-          "Authorization": "Bearer $token",
-        });
+        var data = await http.patch(
+            Uri.parse("$apiUrl/order/withdraw/${order!.id}/$type"),
+            headers: {
+              "Authorization": "Bearer $token",
+            });
+        FirebaseDatabase.instance
+            .ref('/orders/${order!.id}')
+            .update({"modified": ""});
         while (Get.isDialogOpen! && !Get.isSnackbarOpen) {
           Get.back();
         }
@@ -198,7 +202,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
     }
   }
 
-  void withdrawOrderConfirm() {
+  void withdrawOrderConfirm(String type) {
     Get.dialog(
         barrierDismissible: false,
         Dialog(
@@ -234,7 +238,9 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                 Row(
                   children: [
                     Text(
-                      "You will be charged Rs. 40 for withdrawal",
+                      type != "update"
+                          ? "You will be charged Rs. 40 for withdrawal"
+                          : "Are you sure you want to withdraw the order?",
                       style: GoogleFonts.poppins(),
                     ),
                   ],
@@ -242,72 +248,66 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                 const SizedBox(
                   height: 10,
                 ),
-                loading
-                    ? const SpinKitFadingCircle(
-                        color: accentColor,
-                        size: 20,
-                      )
-                    : Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: withdrawOrder,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: accentColor,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                      width: 2, color: Colors.transparent),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 12,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    "Proceed",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => withdrawOrder(type),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: accentColor,
+                            borderRadius: BorderRadius.circular(10),
+                            border:
+                                Border.all(width: 2, color: Colors.transparent),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 12,
+                          ),
+                          child: Center(
+                            child: Text(
+                              "Proceed",
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
-                          const SizedBox(
-                            width: 10,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(
+                      width: 10,
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => Get.back(),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(width: 2, color: accentColor),
                           ),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => Get.back(),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.transparent,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border:
-                                      Border.all(width: 2, color: accentColor),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 12,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    "Cancel",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      color: accentColor,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 12,
+                          ),
+                          child: Center(
+                            child: Text(
+                              "Cancel",
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: accentColor,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                          )
-                        ],
-                      )
+                          ),
+                        ),
+                      ),
+                    )
+                  ],
+                )
               ],
             ),
           ),
@@ -472,8 +472,8 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
       if (distance <= 2500) {
         handleConfirmStatus("Drop", order!.drop);
       } else {
-        Get.snackbar(
-            "Error",   "Your location should be in the range of 2.5km from the location");
+        Get.snackbar("Error",
+            "Your location should be in the range of 2.5km from the location");
       }
     } else {
       Get.dialog(
@@ -530,7 +530,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                           } else {
                             print(distance);
                             Get.snackbar("Error",
-                                  "Your location should be in the range of 2.5km from the location");
+                                "Your location should be in the range of 2.5km from the location");
                           }
                         },
                         child: Container(
@@ -934,11 +934,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                 Get.snackbar("Error",
                                     "You cannot withdraw the order if the item is picked!");
                               } else {
-                                FirebaseDatabase.instance
-                                    .ref('/orders/${order!.id}')
-                                    .update({"modified": ""}).then((value) {
-                                  withdrawOrderConfirm();
-                                });
+                                withdrawOrderConfirm("update");
                               }
                             },
                             child: Container(
@@ -1782,8 +1778,9 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                                           .orderStatus.length <
                                                       2)
                                                     GestureDetector(
-                                                      onTap:
-                                                          withdrawOrderConfirm,
+                                                      onTap: () =>
+                                                          withdrawOrderConfirm(
+                                                              "other"),
                                                       child: Container(
                                                         decoration:
                                                             BoxDecoration(

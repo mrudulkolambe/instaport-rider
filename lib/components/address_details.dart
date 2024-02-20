@@ -277,7 +277,7 @@ class _AddressDetailsScreenState extends State<AddressDetailsScreen> {
                 softWrap: true,
               ),
               Text(
-                "${widget.address.date} - ${widget.address.time}",
+                "${widget.address.date} : From: ${widget.address.fromtime} - To: ${widget.address.totime}",
                 style: GoogleFonts.poppins(),
                 softWrap: true,
               )
