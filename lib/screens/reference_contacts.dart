@@ -15,6 +15,9 @@ import 'package:instaport_rider/controllers/user.dart';
 import 'package:instaport_rider/main.dart';
 import 'package:http/http.dart' as http;
 import 'package:instaport_rider/models/rider_model.dart';
+import 'package:instaport_rider/utils/mask_fomatter.dart';
+import 'package:instaport_rider/utils/toast_manager.dart';
+import 'package:instaport_rider/utils/validator.dart';
 
 class ReferenceContacts extends StatefulWidget {
   const ReferenceContacts({super.key});
@@ -98,8 +101,7 @@ class _ReferenceContactsState extends State<ReferenceContacts> {
         var profileData = RiderDataResponse.fromJson(jsonDecode(data));
         riderController.updateRider(profileData.rider);
         Navigator.of(context).pop();
-      } else {
-        Get.snackbar("Error", response.reasonPhrase!);
+        ToastManager.showToast(response.reasonPhrase!);
       }
       setState(() {
         loading = false;
@@ -212,6 +214,10 @@ class _ReferenceContactsState extends State<ReferenceContacts> {
                   const SizedBox(height: 15.0),
                   const Label(label: "Reference person Mobile number: "),
                   TextFormField(
+                    keyboardType: TextInputType.phone,
+                    validator: (value) => validatePhoneNumber(value!),
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    inputFormatters: [phoneNumberMask],
                     controller: _phonenumbercontroller,
                     style:
                         GoogleFonts.poppins(color: Colors.black, fontSize: 13),
@@ -307,7 +313,8 @@ class _ReferenceContactsState extends State<ReferenceContacts> {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: Colors.white,
-      appBar: AppBar(
+        appBar: AppBar(
+        toolbarHeight: 60,
         surfaceTintColor: Colors.white,
         automaticallyImplyLeading: false,
         backgroundColor: Colors.white,

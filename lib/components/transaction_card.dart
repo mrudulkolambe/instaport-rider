@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:instaport_rider/models/transaction_model.dart';
 import 'package:instaport_rider/constants/colors.dart';
 import 'package:instaport_rider/screens/track_order.dart';
-import 'package:intl/intl.dart';
+import 'package:instaport_rider/utils/timeformatter.dart';
 
 class TransactionCard extends StatefulWidget {
   final SingleTransaction data;
@@ -16,30 +16,9 @@ class TransactionCard extends StatefulWidget {
 }
 
 class _TransactionCardState extends State<TransactionCard> {
-  String formatDateTime(DateTime dateTime) {
-    final DateFormat formatter = DateFormat.Hm(); // HH:mm format
-
-    // Check if the date is today
-    if (isToday(dateTime)) {
-      return 'Today ${formatter.format(dateTime)}';
-    } else {
-      return DateFormat.yMMMd().add_Hm().format(dateTime);
-    }
-  }
-
-  // Function to check if a DateTime object is today's date
-  bool isToday(DateTime dateTime) {
-    final now = DateTime.now();
-    return dateTime.year == now.year &&
-        dateTime.month == now.month &&
-        dateTime.day == now.day;
-  }
 
   @override
   Widget build(BuildContext context) {
-    DateTime dateTime =
-        DateTime.fromMillisecondsSinceEpoch(widget.data.timestamp);
-    String formattedTime = formatDateTime(dateTime);
     return GestureDetector(
       onTap: () => widget.data.order != null && widget.data.message != "Order Withdraw"
           ? Get.to(
@@ -110,7 +89,7 @@ class _TransactionCardState extends State<TransactionCard> {
                             height: 4,
                           ),
                           Text(
-                            formattedTime,
+                            readTimestamp(widget.data.timestamp),
                             style: GoogleFonts.poppins(
                               color: Colors.black,
                               fontSize: 12,

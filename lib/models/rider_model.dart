@@ -3,7 +3,7 @@
 class SignInResponse {
   bool error;
   String message;
-  String token;
+  String? token;
 
   SignInResponse({
     required this.error,
@@ -14,7 +14,7 @@ class SignInResponse {
   factory SignInResponse.fromJson(dynamic json) {
     final error = json['error'] as bool;
     final message = json['message'] as String;
-    final token = json['token'] as String;
+    final token = json['token'] ?? "";
     return SignInResponse(
       error: error,
       message: message,
@@ -31,6 +31,7 @@ class Rider {
   String age;
   String status;
   String image;
+  String token;
   double wallet_amount;
   double requestedAmount;
   bool approve;
@@ -53,6 +54,7 @@ class Rider {
     required this.role,
     required this.age,
     required this.image,
+    required this.token,
     required this.wallet_amount,
     required this.status,
     required this.approve,
@@ -75,6 +77,7 @@ class Rider {
     final fullname = json['fullname'] as String;
     final mobileno = json['mobileno'] as String;
     final status = json['status'] as String;
+    final token = json['token'] as String;
     final approve = json['approve'] as bool;
     final role = json['role'] as String;
     final age = json['age'] as String;
@@ -107,6 +110,7 @@ class Rider {
       role: role,
       age: age,
       approve: approve,
+      token: token,
       requestedAmount: requestedAmount,
       image: image,
       wallet_amount: wallet_amount,

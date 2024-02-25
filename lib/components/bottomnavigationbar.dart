@@ -98,6 +98,7 @@ class _CustomBottomNavigationBarState extends State<CustomBottomNavigationBar> {
                 if (response.statusCode == 200) {
                   var json = await response.stream.bytesToString();
                   var data = RiderDataResponse.fromJson(jsonDecode(json));
+                  Get.to(() => const SplashScreen());
                   riderController.updateRider(data.rider);
                 } else {
                   print(response.reasonPhrase);

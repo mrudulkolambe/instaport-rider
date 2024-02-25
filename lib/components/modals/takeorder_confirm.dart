@@ -11,6 +11,7 @@ import 'package:instaport_rider/main.dart';
 import 'package:instaport_rider/models/order_model.dart';
 import 'package:instaport_rider/models/rider_model.dart';
 import 'package:instaport_rider/screens/track_order.dart';
+import 'package:instaport_rider/utils/toast_manager.dart';
 
 class TakeOrderConfirm extends StatefulWidget {
   final String id;
@@ -38,12 +39,15 @@ class _TakeOrderConfirmState extends State<TakeOrderConfirm> {
         riderController.updateRider(data.rider);
         Get.back();
         Get.back();
-        Get.to(
-          () => TrackOrder(
-            data: widget.data,
-          ),
-        );
-        Get.snackbar("Message", data.message);
+        if (data.error) {
+        } else {
+          Get.to(
+            () => TrackOrder(
+              data: widget.data,
+            ),
+          );
+        }
+        ToastManager.showToast(data.message);
       }
     } catch (e) {
       print(e);

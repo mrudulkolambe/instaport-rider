@@ -13,7 +13,12 @@ import 'package:instaport_rider/models/rider_model.dart';
 import 'package:instaport_rider/screens/create_account.dart';
 import 'package:http/http.dart' as http;
 import 'package:instaport_rider/screens/home.dart';
+import 'package:instaport_rider/screens/inreview.dart';
 import 'package:instaport_rider/services/tracking_service.dart';
+import 'package:instaport_rider/utils/mask_fomatter.dart';
+import 'package:instaport_rider/utils/toast_manager.dart';
+import 'package:instaport_rider/utils/validator.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -27,229 +32,269 @@ class _LoginState extends State<Login> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool loading = false;
+  bool show = false;
   final RiderController riderController = Get.put(RiderController());
   final TrackingService trackingService = Get.find<TrackingService>();
+  late FToast ftoast;
+
+  @override
+  void initState() {
+    ftoast = FToast();
+    ftoast.init(context);
+    super.initState();
+  }
 
   void writeData(String token) async {
     try {
       final riderData = await http.get(Uri.parse('$apiUrl/rider/'),
           headers: {'Authorization': 'Bearer $token'});
       final userData = RiderDataResponse.fromJson(jsonDecode(riderData.body));
-      riderController.updateRider(userData.rider);
-      trackingService.setUser(userData.rider.id);
+      if (userData.rider.approve) {
+        riderController.updateRider(userData.rider);
+        trackingService.setUser(userData.rider.id);
+        Get.to(() => const Home());
+      } else {
+        Get.to(() => const InReview());
+      }
     } catch (error) {
       print('Error creating entry: $error');
       // Handle errors or provide user feedback
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 50),
-          child: Column(
-            children: <Widget>[
-              Row(
-                children: [
-                  Text(
-                    "Sign In",
-                    style: GoogleFonts.poppins(
-                      color: Colors.black,
-                      fontSize: 32,
+    return WillPopScope(
+      onWillPop: () async => false,
+      child: Scaffold(
+        body: SafeArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 50),
+            child: Column(
+              children: <Widget>[
+                Row(
+                  children: [
+                    Text(
+                      "Sign In",
+                      style: GoogleFonts.poppins(
+                        color: Colors.black,
+                        fontSize: 32,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(
-                height: 30,
-              ),
-              Column(
-                children: [
-                  Column(
-                    children: [
-                      const Label(label: "Phone Number: "),
-                      TextFormField(
-                        keyboardType: TextInputType.phone,
-                        controller: _phoneController,
-                        style: GoogleFonts.poppins(
-                          color: Colors.black,
-                          fontSize: 13,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: "Enter your phone number",
-                          hintStyle: GoogleFonts.poppins(
-                              fontSize: 14, color: Colors.black38),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide(
-                              width: 2,
-                              color: Colors.black.withOpacity(0.1),
+                  ],
+                ),
+                const SizedBox(
+                  height: 30,
+                ),
+                Column(
+                  children: [
+                    Column(
+                      children: [
+                        const Label(label: "Phone Number: "),
+                        TextFormField(
+                          inputFormatters: [phoneNumberMask],
+                          validator: (value) => validatePhoneNumber(value!),
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
+                          keyboardType: TextInputType.phone,
+                          controller: _phoneController,
+                          style: GoogleFonts.poppins(
+                            color: Colors.black,
+                            fontSize: 13,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: '+91 00000 00000',
+                            hintStyle: GoogleFonts.poppins(
+                                fontSize: 14, color: Colors.black38),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(
+                                width: 2,
+                                color: Colors.black.withOpacity(0.1),
+                              ),
                             ),
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
-                                width: 2, color: Colors.black26),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide:
-                                const BorderSide(width: 2, color: accentColor),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 15,
-                            horizontal: 20,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(
-                        height: 10,
-                      ),
-                      const Label(label: "Password: "),
-                      TextFormField(
-                        controller: _passwordController,
-                        style: GoogleFonts.poppins(
-                            color: Colors.black, fontSize: 13),
-                        decoration: InputDecoration(
-                          hintText: "Enter your Password",
-                          hintStyle: GoogleFonts.poppins(
-                              fontSize: 14, color: Colors.black38),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide(
-                              width: 2,
-                              color: Colors.black.withOpacity(0.1),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: const BorderSide(
+                                  width: 2, color: Colors.black26),
                             ),
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
-                              width: 2,
-                              color: Colors.black26,
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide:
+                                  const BorderSide(width: 2, color: accentColor),
                             ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
-                              width: 2,
-                              color: accentColor,
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 15,
+                              horizontal: 20,
                             ),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 15,
-                            horizontal: 20,
                           ),
                         ),
-                      ),
-                      const SizedBox(
-                        height: 10,
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text(
-                            "Forget Password?",
-                            style: GoogleFonts.poppins(
-                                color: Colors.black,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500),
+                        const SizedBox(
+                          height: 10,
+                        ),
+                        const Label(label: "Password: "),
+                        TextFormField(
+                          controller: _passwordController,
+                          style: GoogleFonts.poppins(
+                            color: Colors.black,
+                            fontSize: 13,
+                            fontWeight:
+                                show ? FontWeight.normal : FontWeight.w900,
                           ),
-                        ],
-                      ),
-                      const SizedBox(
-                        height: 20,
-                      ),
-                      Row(
-                        children: [
-                          Expanded(
-                              child: GestureDetector(
-                            onTap: loading
-                                ? null
-                                : () async {
-                                    setState(() {
-                                      loading = true;
-                                    });
-                                    const String url = '$apiUrl/rider/signin';
-                                    try {
-                                      final response = await http.post(
-                                        Uri.parse(url),
-                                        headers: {
-                                          'Content-Type': 'application/json'
-                                        },
-                                        body: jsonEncode({
-                                          'mobileno': _phoneController.text,
-                                          'password': _passwordController.text,
-                                        }),
-                                      );
-                                      final data = SignInResponse.fromJson(
-                                          json.decode(response.body));
-                                      if (data.error) {
-                                      } else {
-                                        _storage.write("token", data.token);
-                                        writeData(data.token);
-                                        Get.to(() => const Home());
-                                      }
-                                      // ignore: empty_catches
-                                    } catch (error) {}
-                                    setState(() {
-                                      loading = false;
-                                    });
-                                  },
-                            child: Container(
-                              height: 55,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
+                          obscureText: !show,
+                          decoration: InputDecoration(
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                !show ? Icons.visibility : Icons.visibility_off,
+                                size: 18,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  show = !show;
+                                });
+                              },
+                            ),
+                            hintText: "Enter your Password",
+                            hintStyle: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: Colors.black38,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(
+                                width: 2,
+                                color: Colors.black.withOpacity(0.1),
+                              ),
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: const BorderSide(
+                                width: 2,
+                                color: Colors.black26,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: const BorderSide(
+                                width: 2,
                                 color: accentColor,
                               ),
-                              child: Center(
-                                child: loading
-                                    ? const SpinKitThreeBounce(
-                                        color: Colors.white,
-                                        size: 15,
-                                      )
-                                    : Text(
-                                        "Sign In",
-                                        style: GoogleFonts.poppins(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w600),
-                                      ),
-                              ),
                             ),
-                          )),
-                        ],
-                      ),
-                      const SizedBox(
-                        height: 20,
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            "Don't have an account? ",
-                            style: GoogleFonts.poppins(
-                              color: Colors.black,
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 15,
+                              horizontal: 20,
                             ),
                           ),
-                          GestureDetector(
-                            onTap: () => Get.to(() => const CreateAccount()),
-                            child: Text(
-                              "Sign Up",
+                        ),
+                        const SizedBox(
+                          height: 10,
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Text(
+                              "Forget Password?",
                               style: GoogleFonts.poppins(
-                                color: accentColor,
+                                  color: Colors.black,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 20,
+                        ),
+                        Row(
+                          children: [
+                            Expanded(
+                                child: GestureDetector(
+                              onTap: loading
+                                  ? null
+                                  : () async {
+                                      setState(() {
+                                        loading = true;
+                                      });
+                                      const String url = '$apiUrl/rider/signin';
+                                      try {
+                                        final response = await http.post(
+                                          Uri.parse(url),
+                                          headers: {
+                                            'Content-Type': 'application/json'
+                                          },
+                                          body: jsonEncode({
+                                            'mobileno': _phoneController.text,
+                                            'password': _passwordController.text,
+                                          }),
+                                        );
+                                        final data = SignInResponse.fromJson(
+                                          json.decode(response.body),
+                                        );
+                                        ToastManager.showToast(data.message);
+                                        if (data.error) {
+                                        } else {
+                                          _storage.write("token", data.token!);
+                                          writeData(data.token!);
+                                        }
+                                        // ignore: empty_catches
+                                      } catch (error) {
+                                        ToastManager.showToast(error.toString());
+                                      }
+                                      setState(() {
+                                        loading = false;
+                                      });
+                                    },
+                              child: Container(
+                                height: 55,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                  color: accentColor,
+                                ),
+                                child: Center(
+                                  child: loading
+                                      ? const SpinKitThreeBounce(
+                                          color: Colors.white,
+                                          size: 15,
+                                        )
+                                      : Text(
+                                          "Sign In",
+                                          style: GoogleFonts.poppins(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600),
+                                        ),
+                                ),
+                              ),
+                            )),
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 20,
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              "Don't have an account? ",
+                              style: GoogleFonts.poppins(
+                                color: Colors.black,
                               ),
                             ),
-                          ),
-                        ],
-                      )
-                    ],
-                  ),
-                ],
-              ),
-            ],
+                            GestureDetector(
+                              onTap: () => Get.to(() => const CreateAccount()),
+                              child: Text(
+                                "Sign Up",
+                                style: GoogleFonts.poppins(
+                                  color: accentColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

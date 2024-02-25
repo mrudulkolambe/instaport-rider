@@ -11,7 +11,8 @@ class FAQ extends StatelessWidget {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: Colors.white,
-      appBar: AppBar(
+        appBar: AppBar(
+        toolbarHeight: 60,
         surfaceTintColor: Colors.white,
         automaticallyImplyLeading: false,
         backgroundColor: Colors.white,

@@ -6,6 +6,7 @@ class RiderController extends GetxController {
     id: "",
     fullname: "",
     mobileno: "",
+    token: "",
     role: "customer",
     wallet_amount: 0.0,
     requestedAmount: 0.0,

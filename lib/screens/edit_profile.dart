@@ -14,6 +14,9 @@ import 'package:http/http.dart' as http;
 import 'package:instaport_rider/main.dart';
 import 'package:instaport_rider/models/cloudinary_upload.dart';
 import 'package:instaport_rider/models/rider_model.dart';
+import 'package:instaport_rider/utils/mask_fomatter.dart';
+import 'package:instaport_rider/utils/toast_manager.dart';
+import 'package:instaport_rider/utils/validator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -81,7 +84,17 @@ class _EditProfileState extends State<EditProfile> {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
-        uploadToCloudinary(File(image.path));
+        File pickedImageFile = File(image.path);
+        int sizeInBytes = await pickedImageFile.length();
+        double sizeInMB = sizeInBytes / (1024 * 1024);
+        if (sizeInMB <= 1.0) {
+          uploadToCloudinary(pickedImageFile);
+        } else {
+            ToastManager.showToast('Image size should be less than 1MB');
+          setState(() {
+            uploading = false;
+          });
+        }
       } else {
         setState(() {
           uploading = false;
@@ -92,7 +105,7 @@ class _EditProfileState extends State<EditProfile> {
         uploading = false;
       });
       openAppSettings();
-      Get.snackbar("Error", 'Permission to access gallery denied');
+      ToastManager.showToast('Permission to access gallery denied');
     }
     return;
   }
@@ -122,8 +135,9 @@ class _EditProfileState extends State<EditProfile> {
         var data = await response.stream.bytesToString();
         var profileData = RiderDataResponse.fromJson(jsonDecode(data));
         riderController.updateRider(profileData.rider);
+        ToastManager.showToast(profileData.message);
       } else {
-        Get.snackbar("Error", response.reasonPhrase!);
+        ToastManager.showToast(response.reasonPhrase!);
       }
       setState(() {
         uploading = false;
@@ -156,6 +170,7 @@ class _EditProfileState extends State<EditProfile> {
       resizeToAvoidBottomInset: false,
       backgroundColor: Colors.white,
       appBar: AppBar(
+        toolbarHeight: 60,
         surfaceTintColor: Colors.white,
         automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
@@ -288,7 +303,10 @@ class _EditProfileState extends State<EditProfile> {
                       height: 2,
                     ),
                     TextFormField(
-                      keyboardType: TextInputType.name,
+                      keyboardType: TextInputType.phone,
+                      validator: (value) => validatePhoneNumber(value!),
+                      inputFormatters: [phoneNumberMask],
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
                       controller: _phonecontroller,
                       style: GoogleFonts.poppins(
                         color: Colors.black,
@@ -339,6 +357,8 @@ class _EditProfileState extends State<EditProfile> {
                       height: 2,
                     ),
                     TextFormField(
+                      inputFormatters: [ageMask],
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
                       keyboardType: TextInputType.number,
                       controller: _agecontroller,
                       style: GoogleFonts.poppins(

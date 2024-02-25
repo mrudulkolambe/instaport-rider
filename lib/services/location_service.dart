@@ -14,7 +14,6 @@ class LocationService {
   Future<double> fetchDistance(LatLng src, LatLng dest) async {
     String endpoint =
         'https://maps.googleapis.com/maps/api/distancematrix/json?destinations=${dest.latitude},${dest.longitude}&origins=${src.latitude},${src.longitude}&key=AIzaSyCQb159dbqJypdIO1a1o0v_mNgM5eFqVAo';
-        print(endpoint);
     final response = await http.get(Uri.parse(endpoint));
 
     if (response.statusCode == 200) {

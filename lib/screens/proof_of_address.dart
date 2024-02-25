@@ -12,6 +12,8 @@ import 'package:instaport_rider/controllers/user.dart';
 import 'package:instaport_rider/main.dart';
 import 'package:http/http.dart' as http;
 import 'package:instaport_rider/models/rider_model.dart';
+import 'package:instaport_rider/utils/mask_fomatter.dart';
+import 'package:instaport_rider/utils/toast_manager.dart';
 
 class ProofOfAddress extends StatefulWidget {
   const ProofOfAddress({super.key});
@@ -28,10 +30,29 @@ class _ProofOfAddressState extends State<ProofOfAddress> {
   RiderController riderController = Get.put(RiderController());
   bool loading = false;
   bool uploading = false;
+  TextInputType keyboardType = TextInputType.text;
+
+  void _updateKeyboardType() {
+    setState(() {
+      if (_pancontroller.text.length >= 5 && _pancontroller.text.length <= 9) {
+        keyboardType = TextInputType.number;
+      } else {
+        keyboardType = TextInputType.text;
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _pancontroller.removeListener(_updateKeyboardType);
+    _pancontroller.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
+    _pancontroller.addListener(_updateKeyboardType);
     if (riderController.rider.address == null) {
       _addresscontroller.text = "";
       _aadharcontroller.text = "";
@@ -67,8 +88,9 @@ class _ProofOfAddressState extends State<ProofOfAddress> {
         var data = await response.stream.bytesToString();
         var profileData = RiderDataResponse.fromJson(jsonDecode(data));
         riderController.updateRider(profileData.rider);
+        ToastManager.showToast(profileData.message);
       } else {
-        Get.snackbar("Error", response.reasonPhrase!);
+        ToastManager.showToast(response.reasonPhrase!);
       }
       setState(() {
         loading = false;
@@ -81,7 +103,8 @@ class _ProofOfAddressState extends State<ProofOfAddress> {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: Colors.white,
-      appBar: AppBar(
+        appBar: AppBar(
+        toolbarHeight: 60,
         surfaceTintColor: Colors.white,
         automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
@@ -177,6 +200,7 @@ class _ProofOfAddressState extends State<ProofOfAddress> {
                       height: 2,
                     ),
                     TextFormField(
+                      inputFormatters: [aadharcardMask],
                       keyboardType: TextInputType.number,
                       controller: _aadharcontroller,
                       style: GoogleFonts.poppins(
@@ -230,7 +254,9 @@ class _ProofOfAddressState extends State<ProofOfAddress> {
                       height: 2,
                     ),
                     TextFormField(
-                      keyboardType: TextInputType.name,
+                      inputFormatters: [pancardMask],
+                      textCapitalization: TextCapitalization.characters,
+                      keyboardType: keyboardType,
                       controller: _pancontroller,
                       style: GoogleFonts.poppins(
                         color: Colors.black,

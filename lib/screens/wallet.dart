@@ -17,6 +17,7 @@ import 'package:http/http.dart' as http;
 import 'package:instaport_rider/main.dart';
 import 'package:instaport_rider/models/transaction_model.dart';
 import 'package:instaport_rider/models/rider_model.dart';
+import 'package:instaport_rider/utils/toast_manager.dart';
 
 class Wallet extends StatefulWidget {
   const Wallet({super.key});
@@ -56,7 +57,6 @@ class _WalletState extends State<Wallet> {
       final token = await _storage.read("token");
       final response = await http.get(Uri.parse("$apiUrl/rider/transactions"),
           headers: {'Authorization': 'Bearer $token'});
-          print(response.body);
       final data = await http.get(Uri.parse('$apiUrl/rider/'),
           headers: {'Authorization': 'Bearer $token'});
       final userData = RiderDataResponse.fromJson(jsonDecode(data.body));
@@ -88,7 +88,7 @@ class _WalletState extends State<Wallet> {
         },
       );
       var data = RiderDataResponse.fromJson(jsonDecode(response.body));
-      Get.snackbar("Message", data.message);
+      ToastManager.showToast(data.message);
       setState(() {
         requestLoading = false;
       });
@@ -98,7 +98,8 @@ class _WalletState extends State<Wallet> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+        appBar: AppBar(
+        toolbarHeight: 60,
         surfaceTintColor: Colors.white,
         automaticallyImplyLeading: false,
         backgroundColor: Colors.white,

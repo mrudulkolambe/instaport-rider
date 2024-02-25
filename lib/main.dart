@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:instaport_rider/constants/colors.dart';
@@ -16,6 +17,7 @@ import 'package:instaport_rider/screens/inreview.dart';
 import 'package:instaport_rider/screens/login.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:instaport_rider/services/tracking_service.dart';
+import 'package:instaport_rider/utils/toast_manager.dart';
 import 'package:map_location_picker/google_map_location_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:http/http.dart' as http;
@@ -35,10 +37,11 @@ const apiUrl = "https://instaport-backend-main.vercel.app";
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
+    ToastManager.init(context);
     return GetMaterialApp(
+      builder: FToastBuilder(),
       title: 'Instaport Rider',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: accentColor),
@@ -94,12 +97,12 @@ class _SplashScreenState extends State<SplashScreen> {
     super.dispose();
   }
 
-void didChangeAppLifecycleState(AppLifecycleState state) {
+  void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
       _storage.remove("hidden_orders");
     }
   }
-  
+
   void _getCurrentLocation() async {
     var position = await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
@@ -136,14 +139,17 @@ void didChangeAppLifecycleState(AppLifecycleState state) {
             userData.rider.status == "disabled") {
           Get.to(() => const DisabledScreen());
         } else {
-          print("object");
-          handleFetchPrice();
-          riderController.updateRider(userData.rider);
-          trackingService.setUser(userData.rider.id);
-          Get.to(() => const Home());
+          if (userData.rider.token == token) {
+            handleFetchPrice();
+            riderController.updateRider(userData.rider);
+            trackingService.setUser(userData.rider.id);
+            Get.to(() => const Home());
+          } else {
+            _storage.remove("token");
+            Get.to(() => const Login());
+          }
         }
       } catch (e) {
-        print(e);
         // _storage.remove("token");
         // Get.to(() => const Login());
       }

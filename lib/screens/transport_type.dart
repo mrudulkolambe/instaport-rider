@@ -17,6 +17,7 @@ import 'package:instaport_rider/main.dart';
 import 'package:http/http.dart' as http;
 import 'package:instaport_rider/models/cloudinary_upload.dart';
 import 'package:instaport_rider/models/rider_model.dart';
+import 'package:instaport_rider/utils/toast_manager.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -70,7 +71,7 @@ class _TransportTypeState extends State<TransportType> {
     final url =
         Uri.parse('https://api.cloudinary.com/v1_1/dwd2fznsk/image/upload');
     final request = http.MultipartRequest('POST', url)
-      ..fields['upload_preset'] = 'pmoqxm8k'
+      ..fields['upload_preset'] = 'zkmws48n'
       ..files.add(await http.MultipartFile.fromPath('file', imageFile.path));
     final response = await request.send();
     if (response.statusCode == 200) {
@@ -82,7 +83,8 @@ class _TransportTypeState extends State<TransportType> {
         drivinglicense = data.secureUrl;
       });
       handleSave();
-      Get.snackbar("Message", 'Driving license updated successfully!');
+    } else {
+      print(response.statusCode);
     }
   }
 
@@ -92,7 +94,14 @@ class _TransportTypeState extends State<TransportType> {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
-        uploadToCloudinary(File(image.path));
+        File pickedImageFile = File(image.path);
+        int sizeInBytes = await pickedImageFile.length();
+        double sizeInMB = sizeInBytes / (1024 * 1024);
+        if (sizeInMB <= 1.0) {
+          uploadToCloudinary(pickedImageFile);
+        } else {
+          ToastManager.showToast('Image size should be less than 1MB');
+        }
       } else {
         setState(() {
           loading = false;
@@ -103,7 +112,7 @@ class _TransportTypeState extends State<TransportType> {
         loading = false;
       });
       openAppSettings();
-      Get.snackbar("Error", 'Permission to access gallery denied');
+      ToastManager.showToast('Permission to access gallery denied');
     }
     return;
   }
@@ -120,7 +129,8 @@ class _TransportTypeState extends State<TransportType> {
     );
     setState(() {
       vehicle = rider.vehicle == null ? "scooty" : rider.vehicle!;
-      drivinglicense = rider.drivinglicense == "" ? "" : rider.drivinglicense!;
+      drivinglicense =
+          rider.drivinglicense == null ? "" : rider.drivinglicense!;
     });
   }
 
@@ -144,10 +154,10 @@ class _TransportTypeState extends State<TransportType> {
       if (response.statusCode == 200) {
         var data = await response.stream.bytesToString();
         var profileData = RiderDataResponse.fromJson(jsonDecode(data));
-        print(data);
+        ToastManager.showToast(profileData.message);
         riderController.updateRider(profileData.rider);
       } else {
-        Get.snackbar("Error", response.reasonPhrase!);
+        ToastManager.showToast(response.reasonPhrase!);
       }
       setState(() {
         loading = false;
@@ -161,6 +171,7 @@ class _TransportTypeState extends State<TransportType> {
       resizeToAvoidBottomInset: false,
       backgroundColor: Colors.white,
       appBar: AppBar(
+        toolbarHeight: 60,
         surfaceTintColor: Colors.white,
         automaticallyImplyLeading: false,
         backgroundColor: Colors.white,

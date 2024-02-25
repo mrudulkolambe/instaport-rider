@@ -1,3 +1,5 @@
+// ignore_for_file: unused_local_variable
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -115,7 +117,8 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
       length: 3,
       child: Scaffold(
         backgroundColor: Colors.white,
-        appBar: AppBar(
+          appBar: AppBar(
+        toolbarHeight: 60,
           surfaceTintColor: Colors.white,
           automaticallyImplyLeading: false,
           backgroundColor: Colors.white,
@@ -162,26 +165,6 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                   const SizedBox(
                     height: 15,
                   ),
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: accentColor,
-                    ),
-                    width: MediaQuery.of(context).size.width * 0.8,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 15,
-                    ),
-                    child: Center(
-                      child: Text(
-                        "Turn On",
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  )
                 ],
               )
             : RefreshIndicator(

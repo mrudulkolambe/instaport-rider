@@ -9,6 +9,7 @@ import 'package:instaport_rider/controllers/app.dart';
 import 'package:instaport_rider/models/order_model.dart';
 import 'package:instaport_rider/screens/track_order.dart';
 import 'package:instaport_rider/services/location_service.dart';
+import 'package:instaport_rider/utils/obsecure_text.dart';
 import 'package:instaport_rider/utils/timeformatter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -39,7 +40,6 @@ class _OrderCardState extends State<OrderCard> {
   void initState() {
     super.initState();
     _handleDistance();
-    print(widget.data.droplocations);
   }
 
   @override
@@ -93,7 +93,7 @@ class _OrderCardState extends State<OrderCard> {
                     ),
                   ),
                   child: Text(
-                    e.text,
+                    obscureString(e.text),
                     softWrap: true,
                     style: GoogleFonts.poppins(
                       fontWeight: FontWeight.w600,
@@ -183,7 +183,7 @@ class _OrderCardState extends State<OrderCard> {
                         ),
                       ),
                       if (widget.data.delivery_type == "scheduled")
-                        Icon(
+                        const Icon(
                           Icons.timer,
                           color: accentColor,
                           size: 18,
@@ -223,7 +223,7 @@ class _OrderCardState extends State<OrderCard> {
                                       ),
                                     ),
                                     child: Text(
-                                      widget.data.pickup.text,
+                                      obscureString(widget.data.pickup.text),
                                       softWrap: true,
                                       style: GoogleFonts.poppins(
                                         fontWeight: FontWeight.w600,
@@ -291,7 +291,7 @@ class _OrderCardState extends State<OrderCard> {
                                 ),
                               ),
                               child: Text(
-                                widget.data.drop.text,
+                                obscureString(widget.data.drop.text),
                                 softWrap: true,
                                 style: GoogleFonts.poppins(
                                   fontWeight: FontWeight.w600,
@@ -589,7 +589,7 @@ class _OrderCardState extends State<OrderCard> {
                     ),
                   ),
                   if (widget.data.delivery_type == "scheduled")
-                    Icon(
+                    const Icon(
                       Icons.timer,
                       color: accentColor,
                       size: 18,
@@ -613,7 +613,7 @@ class _OrderCardState extends State<OrderCard> {
                       ),
                       Expanded(
                         child: Text(
-                          widget.data.pickup.text,
+                          widget.data.status == "new" ? obscureString(widget.data.pickup.text) : widget.data.pickup.text,
                           softWrap: true,
                           style: GoogleFonts.poppins(
                             fontWeight: FontWeight.w600,
@@ -668,7 +668,7 @@ class _OrderCardState extends State<OrderCard> {
                       ),
                       Expanded(
                         child: Text(
-                          widget.data.drop.text,
+                          widget.data.status == "new" ? obscureString(widget.data.drop.text) : widget.data.drop.text,
                           softWrap: true,
                           style: GoogleFonts.poppins(
                             fontWeight: FontWeight.w600,
@@ -739,7 +739,7 @@ class _OrderCardState extends State<OrderCard> {
                             ),
                             Expanded(
                               child: Text(
-                                widget.data.droplocations.last.text,
+                                widget.data.status == "new" ? obscureString(widget.data.droplocations.last.text) : widget.data.droplocations.last.text,
                                 softWrap: true,
                                 style: GoogleFonts.poppins(
                                   fontWeight: FontWeight.w600,

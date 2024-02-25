@@ -11,6 +11,7 @@ import 'package:instaport_rider/components/display_input.dart';
 import 'package:instaport_rider/constants/colors.dart';
 import 'package:instaport_rider/main.dart';
 import 'package:instaport_rider/models/order_model.dart';
+import 'package:instaport_rider/utils/toast_manager.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 
@@ -132,14 +133,14 @@ class _TrackOrderDetailsState extends State<TrackOrderDetails>
         var updatedOrderData = OrderResponse.fromJson(jsonDecode(json));
         Get.back();
         Get.back();
-        Get.snackbar("Message", updatedOrderData.message);
+        ToastManager.showToast(updatedOrderData.message);
       } else {
         Get.back();
-        Get.snackbar("Message", response.reasonPhrase!);
+        ToastManager.showToast(response.reasonPhrase!);
       }
     } else {
       Get.back();
-      Get.snackbar("Message", "Unable to update");
+      ToastManager.showToast("Unable to update");
     }
   }
 
@@ -278,14 +279,14 @@ class _TrackOrderDetailsState extends State<TrackOrderDetails>
         var updatedOrderData = OrderResponse.fromJson(jsonDecode(json));
         Get.back();
         Get.back();
-        Get.snackbar("Message", updatedOrderData.message);
+        ToastManager.showToast(updatedOrderData.message);
       } else {
         Get.back();
-        Get.snackbar("Message", response.reasonPhrase!);
+        ToastManager.showToast(response.reasonPhrase!);
       }
     } else {
       Get.back();
-      Get.snackbar("Message", "Complete all the dropings first.");
+      ToastManager.showToast("Complete all the dropings first.");
     }
   }
 
@@ -693,7 +694,6 @@ class _TrackOrderDetailsState extends State<TrackOrderDetails>
                         ],
                       ),
                     ),
-                  
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 25.0),
                       child: Column(
@@ -712,7 +712,7 @@ class _TrackOrderDetailsState extends State<TrackOrderDetails>
                                 ),
                               ),
                               Text(
-                                "- ₹${(order!.amount * (order!.commission/100)).toPrecision(1).toString()}",
+                                "- ₹${(order!.amount * (order!.commission / 100)).toPrecision(1).toString()}",
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
@@ -735,7 +735,7 @@ class _TrackOrderDetailsState extends State<TrackOrderDetails>
                                 ),
                               ),
                               Text(
-                                "+ ₹${(order!.amount * ((100 - order!.commission)/100)).toPrecision(1).toString()}",
+                                "+ ₹${(order!.amount * ((100 - order!.commission) / 100)).toPrecision(1).toString()}",
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,

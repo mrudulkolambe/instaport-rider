@@ -115,6 +115,7 @@ class Orders {
   User customer;
   String package;
   int time_stamp;
+  int timer;
   double parcel_value;
   double amount;
   double distance;
@@ -144,6 +145,7 @@ class Orders {
     required this.distance,
     required this.commission,
     required this.orderStatus,
+    required this.timer,
     this.rider,
     this.payment_address,
   });
@@ -184,6 +186,7 @@ class Orders {
     final amount = json['amount'] + 0.0 as double;
     final commission = json['commission'] + 0.0 as double;
     final parcel_value = json['parcel_value'] + 0.0 as double;
+    final timer = json['timer'] as int;
     final payment_address = json['payment_address'] == null
         ? null
         : Address.fromJson(json['payment_address']);
@@ -207,6 +210,7 @@ class Orders {
       parcel_value: parcel_value,
       amount: amount,
       distance: distance,
+      timer: timer,
       orderStatus: orderStatus,
       rider: json["rider"] == null
           ? null
@@ -239,7 +243,8 @@ class Orders {
       "amount": amount,
       "distance": distance,
       "orderStatus": orderStatus,
-      "rider": rider
+      "rider": rider,
+      "timer": timer,
     };
   }
 }

@@ -45,6 +45,8 @@ class _AddressDetailsScreenState extends State<AddressDetailsScreen> {
   @override
   void initState() {
     super.initState();
+    print(widget.address.key);
+    print(widget.paymentAddress!.key);
   }
 
   void _makePhoneCall(String phoneNumber) async {
@@ -300,10 +302,12 @@ class _AddressDetailsScreenState extends State<AddressDetailsScreen> {
               ),
               Text(
                 widget.title == "Pickup"
-                    ? readTimestamp(widget.time + 45 * minute)
-                    : readTimestamp(
+                    ? "From: ${readTimestampAsTime(widget.time)} - To: ${readTimestampAsTime(widget.time + 45 * minute)}"
+                    : "From: ${readTimestampAsTime(
+                        widget.time + 45 * minute,
+                      )} - To: ${readTimestampAsTime(
                         widget.time + 60 * minute * widget.index + 45 * minute,
-                      ),
+                      )}",
                 style: GoogleFonts.poppins(),
                 softWrap: true,
               )
@@ -335,7 +339,7 @@ class _AddressDetailsScreenState extends State<AddressDetailsScreen> {
         ),
         if (widget.type == "cod" &&
             widget.paymentAddress != null &&
-            widget.address.text == widget.paymentAddress!.text)
+            widget.address.key == widget.paymentAddress!.key)
           Text(
             "Collect Rs. ${widget.amount.toPrecision(2)} from here.",
             style: GoogleFonts.poppins(

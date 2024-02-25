@@ -12,6 +12,8 @@ import 'package:instaport_rider/controllers/user.dart';
 import 'package:instaport_rider/main.dart';
 import 'package:http/http.dart' as http;
 import 'package:instaport_rider/models/rider_model.dart';
+import 'package:instaport_rider/utils/mask_fomatter.dart';
+import 'package:instaport_rider/utils/toast_manager.dart';
 
 class BankDetails extends StatefulWidget {
   const BankDetails({super.key});
@@ -32,9 +34,13 @@ class _BankDetailsState extends State<BankDetails> {
   @override
   void initState() {
     super.initState();
-      _accHolderName.text = riderController.rider.accname != null ? riderController.rider.accname! : "";
-      _accountNumber.text = riderController.rider.accno != null ? riderController.rider.accno! : "";
-      _ifscode.text = riderController.rider.ifsc != null ? riderController.rider.ifsc! : "";
+    _accHolderName.text = riderController.rider.accname != null
+        ? riderController.rider.accname!
+        : "";
+    _accountNumber.text =
+        riderController.rider.accno != null ? riderController.rider.accno! : "";
+    _ifscode.text =
+        riderController.rider.ifsc != null ? riderController.rider.ifsc! : "";
   }
 
   void handleSave() async {
@@ -61,8 +67,9 @@ class _BankDetailsState extends State<BankDetails> {
         var data = await response.stream.bytesToString();
         var profileData = RiderDataResponse.fromJson(jsonDecode(data));
         riderController.updateRider(profileData.rider);
+        ToastManager.showToast(profileData.message);
       } else {
-        Get.snackbar("Error", response.reasonPhrase!);
+        ToastManager.showToast(response.reasonPhrase!);
       }
       setState(() {
         loading = false;
@@ -75,7 +82,8 @@ class _BankDetailsState extends State<BankDetails> {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: Colors.white,
-      appBar: AppBar(
+        appBar: AppBar(
+        toolbarHeight: 60,
         surfaceTintColor: Colors.white,
         automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
@@ -215,6 +223,8 @@ class _BankDetailsState extends State<BankDetails> {
                       height: 2,
                     ),
                     TextFormField(
+                      inputFormatters: [ifscMask],
+                      textCapitalization: TextCapitalization.characters,
                       keyboardType: TextInputType.name,
                       controller: _ifscode,
                       style: GoogleFonts.poppins(

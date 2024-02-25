@@ -1,9 +1,8 @@
-// ignore_for_file: deprecated_member_use, non_constant_identifier_names
+// ignore_for_file: deprecated_member_use, non_constant_identifier_names, unused_field
 
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
@@ -15,7 +14,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:instaport_rider/components/address_details.dart';
-import 'package:instaport_rider/components/appbar.dart';
 import 'package:instaport_rider/constants/colors.dart';
 import 'package:instaport_rider/controllers/app.dart';
 import 'package:instaport_rider/main.dart';
@@ -23,9 +21,11 @@ import 'package:instaport_rider/models/address_model.dart';
 import 'package:instaport_rider/models/cloudinary_upload.dart';
 import 'package:instaport_rider/models/order_model.dart';
 import 'package:instaport_rider/models/places_model.dart';
+import 'package:instaport_rider/models/price_model.dart';
 import 'package:instaport_rider/screens/home.dart';
 import 'package:instaport_rider/services/location_service.dart';
 import 'package:instaport_rider/utils/timeformatter.dart';
+import 'package:instaport_rider/utils/toast_manager.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
@@ -51,6 +51,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
   late StreamSubscription<Position> positionStream;
   int modalState = 0;
   LatLng? CurrentLocation;
+  PriceManipulation? price;
   StreamSubscription<Position>? _positionStream;
   BitmapDescriptor riderIcon = BitmapDescriptor.defaultMarker;
   Orders? order;
@@ -61,6 +62,8 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
   Timer? _timer;
   late StreamSubscription<DatabaseEvent> _databaseListener;
   DatabaseReference ref = FirebaseDatabase.instance.ref();
+  final int minute = 60000;
+  String timeOfTimer = "";
 
   Future<void> _launchUrl(
       LatLng src, LatLng dest, List<Address> droplocations) async {
@@ -97,6 +100,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    handlePriceFetch();
     refreshMain();
     _timer = Timer.periodic(const Duration(seconds: 10), (timer) {
       refresh();
@@ -106,7 +110,28 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
     setcustommarkericon();
   }
 
-  void handleConfirm(String address, String key, Address addressObj) async {
+  int _counter = 0;
+  late Timer _countdown;
+
+  void countdownTimer() {
+    _timer = Timer.periodic(const Duration(milliseconds: 1000), (Timer timer) {
+      try {
+        setState(() {
+          _counter = _counter - 1000;
+          timeOfTimer = _counter < 0
+              ? "-${formatMilliseconds(_counter.abs())}"
+              : formatMilliseconds(_counter.abs());
+        });
+      } catch (e) {}
+    });
+  }
+
+  void stopTimer() {
+    _timer!.cancel();
+  }
+
+  void handleConfirm(
+      String address, String key, Address addressObj, String type) async {
     final token = await _storage.read("token");
     var data = await http.get(Uri.parse("$apiUrl/order/customer/${order!.id}"));
     var orderData = OrderResponse.fromJson(jsonDecode(data.body));
@@ -138,22 +163,24 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
           ]
         });
       } else if (img != "") {
+        var items = orderData.order.orderStatus.map((e) {
+          return e.toJson();
+        });
         request.body = json.encode({
           "status": "processing",
+          "timer": _counter,
           "orderStatus": [
-            ...orderData.order.orderStatus.map((e) {
-              return e.toJson();
-            }).toList(),
+            ...items.toList(),
             {
               "timestamp": DateTime.now().millisecondsSinceEpoch,
               "message": address,
               "image": img,
-              "key": key
+              "key": key,
             }
           ]
         });
       } else if (img == "") {
-        Get.snackbar("Message", "Image not uploaded yet");
+        ToastManager.showToast("Image not uploaded yet");
       }
       request.headers.addAll(headers);
 
@@ -162,6 +189,34 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
       if (response.statusCode == 200) {
         var json = await response.stream.bytesToString();
         var updatedOrderData = OrderResponse.fromJson(jsonDecode(json));
+        if (updatedOrderData.order.orderStatus.isEmpty) {
+        } else if (updatedOrderData.order.orderStatus.isNotEmpty &&
+            updatedOrderData.order.orderStatus.length == 1) {
+          // stopTimer();
+          // var timeLimit = DateTime.fromMillisecondsSinceEpoch(
+          //         updatedOrderData.order.timer + 45 * minute)
+          //     .millisecondsSinceEpoch;
+          // setState(() {
+          //   _counter = timeLimit - updatedOrderData.order.time_stamp;
+          // });
+          // countdownTimer();
+        } else if (updatedOrderData.order.status == "processing" &&
+            updatedOrderData.order.orderStatus.length !=
+                3 + updatedOrderData.order.droplocations.length) {
+          stopTimer();
+          var timerInt = DateTime.now().millisecondsSinceEpoch;
+          var timeLimit =
+              DateTime.fromMillisecondsSinceEpoch(timerInt + 60 * minute)
+                      .millisecondsSinceEpoch +
+                  updatedOrderData.order.timer;
+          setState(() {
+            _counter = timeLimit - timerInt;
+          });
+          countdownTimer();
+        } else {
+          stopTimer();
+        }
+        ToastManager.showToast(updatedOrderData.message);
         setState(() {
           order = updatedOrderData.order;
         });
@@ -169,7 +224,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
       } else {}
     } else {
       Get.back(closeOverlays: true);
-      Get.snackbar("Message", "Unable to update");
+      ToastManager.showToast("Unable to update");
     }
     while (Get.isDialogOpen! && !Get.isSnackbarOpen) {
       Get.back();
@@ -193,12 +248,12 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
         }
         var orderData = MessageResponse.fromJson(jsonDecode(data.body));
         Get.to(() => const Home());
-        Get.snackbar("Message", orderData.message);
+        ToastManager.showToast(orderData.message);
       } else {
-        Get.snackbar("Message", "Cannot withdraw order");
+        ToastManager.showToast("Cannot withdraw order");
       }
     } catch (e) {
-      print(e);
+      // print(e);
     }
   }
 
@@ -239,7 +294,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                   children: [
                     Text(
                       type != "update"
-                          ? "You will be charged Rs. 40 for withdrawal"
+                          ? "You will be charged Rs. ${price == null ? 40 : price!.withdrawalCharges} for withdrawal"
                           : "Are you sure you want to withdraw the order?",
                       style: GoogleFonts.poppins(),
                     ),
@@ -336,7 +391,14 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(source: ImageSource.camera);
       if (image != null) {
-        return await uploadToCloudinary(File(image.path));
+        File pickedImageFile = File(image.path);
+        int sizeInBytes = await pickedImageFile.length();
+        double sizeInMB = sizeInBytes / (1024 * 1024);
+        if (sizeInMB <= 1.0) {
+          return await uploadToCloudinary(File(image.path));
+        } else {
+          ToastManager.showToast('Image size should be less than 1MB');
+        }
       } else {
         setState(() {
           // uploading = false;
@@ -347,7 +409,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
         // uploading = false;
       });
       openAppSettings();
-      Get.snackbar("Error", 'Permission to access gallery denied');
+      ToastManager.showToast('Permission to access gallery denied');
     }
     return "";
   }
@@ -437,15 +499,15 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
         setState(() {
           order = updatedOrderData.order;
         });
-        Get.snackbar("Message", updatedOrderData.message);
+        ToastManager.showToast(updatedOrderData.message);
         Get.to(() => const Home());
       } else {
         Get.back();
-        Get.snackbar("Message", response.reasonPhrase!);
+        ToastManager.showToast(response.reasonPhrase!);
       }
     } else {
       Get.back();
-      Get.snackbar("Message", "Complete all the dropings first.");
+      ToastManager.showToast("Complete all the dropings first.");
     }
   }
 
@@ -456,12 +518,9 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
           LatLng(posi.latitude, posi.longitude),
           LatLng(order!.pickup.latitude, order!.pickup.longitude));
       if (distance <= 2500) {
-        handleConfirmStatus(
-          "Pickup",
-          order!.pickup,
-        );
+        handleConfirmStatus("Pickup", order!.pickup, "pick");
       } else {
-        Get.snackbar("Error",
+        ToastManager.showToast(
             "Your location should be in the range of 2.5km from the location");
       }
     } else if (order!.orderStatus.length == 2 && order!.droplocations.isEmpty) {
@@ -469,10 +528,10 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
       var distance = await LocationService().fetchDistance(
           LatLng(posi.latitude, posi.longitude),
           LatLng(order!.drop.latitude, order!.drop.longitude));
+        handleConfirmStatus("Drop", order!.drop, "drop");
       if (distance <= 2500) {
-        handleConfirmStatus("Drop", order!.drop);
       } else {
-        Get.snackbar("Error",
+        ToastManager.showToast(
             "Your location should be in the range of 2.5km from the location");
       }
     } else {
@@ -525,11 +584,10 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                               LatLng(posi.latitude, posi.longitude),
                               LatLng(
                                   order!.drop.latitude, order!.drop.longitude));
+                            handleConfirmStatus("Drop", order!.drop, "drop");
                           if (distance <= 2500) {
-                            handleConfirmStatus("Drop", order!.drop);
                           } else {
-                            print(distance);
-                            Get.snackbar("Error",
+                            ToastManager.showToast(
                                 "Your location should be in the range of 2.5km from the location");
                           }
                         },
@@ -572,7 +630,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                               .isEmpty)
                             GestureDetector(
                               onTap: () {
-                                handleConfirmStatus("Drop", e);
+                                handleConfirmStatus("Drop", e, "drop");
                               },
                               child: Container(
                                 decoration: BoxDecoration(
@@ -648,7 +706,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
     }
   }
 
-  void handleConfirmStatus(String task, Address address) {
+  void handleConfirmStatus(String task, Address address, String type) {
     Get.dialog(
         barrierDismissible: false,
         Dialog(
@@ -741,8 +799,8 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                             child: GestureDetector(
                               onTap: () => task == "order"
                                   ? handleOrderComplete()
-                                  : handleConfirm(
-                                      address.address, address.key, address),
+                                  : handleConfirm(address.address, address.key,
+                                      address, type),
                               child: Container(
                                 decoration: BoxDecoration(
                                   color: accentColor,
@@ -805,10 +863,43 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
         ));
   }
 
+  void handlePriceFetch() async {
+    var response = await http.get(Uri.parse("$apiUrl/price/get"));
+    final data = PriceManipulationResponse.fromJson(jsonDecode(response.body));
+    setState(() {
+      price = data.priceManipulation;
+    });
+  }
+
   void refreshMain() async {
     var data =
         await http.get(Uri.parse("$apiUrl/order/customer/${widget.data.id}"));
     var orderData = OrderResponse.fromJson(jsonDecode(data.body));
+    if (orderData.order.status == "processing") {
+      int latestTime = DateTime.now().millisecondsSinceEpoch;
+      if (orderData.order.orderStatus.length < 2 &&
+          orderData.order.status == "processing") {
+        var timeLimit = DateTime.fromMillisecondsSinceEpoch(
+                orderData.order.time_stamp + 45 * minute)
+            .millisecondsSinceEpoch;
+        setState(() {
+          _counter = timeLimit - latestTime;
+        });
+        countdownTimer();
+      } else if (orderData.order.orderStatus.length > 1 &&
+          orderData.order.status == "processing" &&
+          orderData.order.orderStatus.length !=
+              3 + orderData.order.droplocations.length) {
+        var timeLimit = DateTime.fromMillisecondsSinceEpoch(
+                    orderData.order.time_stamp + 60 * minute)
+                .millisecondsSinceEpoch +
+            _counter;
+        setState(() {
+          _counter = timeLimit - latestTime;
+        });
+        countdownTimer();
+      }
+    }
     setState(() {
       order = orderData.order;
       _mapKey = UniqueKey();
@@ -853,7 +944,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
       _databaseListener = ref
           .child('orders/${widget.data.id}')
           .onValue
-          .listen((DatabaseEvent event) {
+          .listen((DatabaseEvent event) async {
         final data = event.snapshot.value;
         final dynamic snapshotValue = json.encode(data);
         if (snapshotValue != null) {
@@ -861,104 +952,276 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
             Get.back();
           }
           final data = RealtimeOrder.fromJson(jsonDecode(snapshotValue));
+          var updatedData = await http
+              .get(Uri.parse("$apiUrl/order/customer/${widget.data.id}"));
+          var orderData =
+              OrderResponse.fromJson(jsonDecode(updatedData.body)).order;
           if (data.modified == "data") {
             Get.dialog(
-              Dialog(
-                backgroundColor: Colors.white,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 20,
-                  ),
-                  height: 255,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        children: [
-                          Text(
-                            "Update",
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 20,
+              WillPopScope(
+                onWillPop: () async {
+                  return false;
+                },
+                child: Dialog.fullscreen(
+                  backgroundColor: Colors.white,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 25,
+                    ),
+                    child: Column(
+                      children: [
+                        const SizedBox(
+                          height: 10,
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Rs. ${(orderData.amount * ((100 - orderData.commission) / 100)).toPrecision(2).toString()}",
+                              style: GoogleFonts.poppins(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                          SizedBox(
-                            height: 8,
-                          ),
-                          Text(
-                            "Your order has been update by the customer the amount is Rs.${data.order.amount}",
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w600,
+                            Text(
+                              "#${orderData.id.substring(18)}",
+                              style: GoogleFonts.poppins(),
                             ),
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 6,
+                        ),
+                        Row(
+                          children: [
+                            Text(
+                              "Weight: ",
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(
+                              width: 2,
+                            ),
+                            Text(
+                              orderData.parcel_weight,
+                              style: GoogleFonts.poppins(),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 6,
+                        ),
+                        Row(
+                          children: [
+                            Text(
+                              "Parcel: ",
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(
+                              width: 2,
+                            ),
+                            Text(
+                              orderData.package,
+                              style: GoogleFonts.poppins(),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 6,
+                        ),
+                        Row(
+                          children: [
+                            Text(
+                              "Customer Name: ",
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(
+                              width: 2,
+                            ),
+                            Text(
+                              orderData.customer.fullname,
+                              style: GoogleFonts.poppins(),
+                            ),
+                          ],
+                        ),
+                        if (orderData.status != "delivered")
+                          const SizedBox(
+                            height: 6,
                           ),
-                        ],
-                      ),
-                      Column(
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              FirebaseDatabase.instance
-                                  .ref('/orders/${order!.id}')
-                                  .update({"modified": ""}).then((value) {
-                                if (Get.isDialogOpen! && !Get.isSnackbarOpen) {
-                                  Get.back();
+                        if (orderData.status != "delivered")
+                          Row(
+                            children: [
+                              Text(
+                                "Customer No.: ",
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(
+                                width: 2,
+                              ),
+                              GestureDetector(
+                                onTap: () => _makePhoneCall(
+                                  orderData.customer.mobileno,
+                                ),
+                                child: Text(
+                                  orderData.customer.mobileno,
+                                  style: GoogleFonts.poppins(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        const SizedBox(
+                          height: 6,
+                        ),
+                        Row(
+                          children: [
+                            Text(
+                              "Payment: ",
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(
+                              width: 2,
+                            ),
+                            Text(
+                              orderData.payment_method,
+                              style: GoogleFonts.poppins(),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 6,
+                        ),
+                        Row(
+                          children: [
+                            Text(
+                              "Time: ",
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(
+                              width: 2,
+                            ),
+                            Text(
+                              readTimestamp(orderData.time_stamp),
+                              style: GoogleFonts.poppins(),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 10,
+                        ),
+                        const Divider(),
+                        AddressDetailsScreen(
+                          address: orderData.pickup,
+                          title: "Pickup",
+                          scheduled: orderData.delivery_type != "now",
+                          paymentAddress: orderData.payment_address,
+                          time: orderData.time_stamp,
+                          orderStatus: orderData.orderStatus,
+                          index: 0,
+                          amount: orderData.amount,
+                          type: orderData.payment_method,
+                          status: orderData.status,
+                        ),
+                        const SizedBox(
+                          height: 15,
+                        ),
+                        const Divider(),
+                        AddressDetailsScreen(
+                          address: orderData.drop,
+                          title: "Drop",
+                          scheduled: orderData.delivery_type != "now",
+                          paymentAddress: orderData.payment_address,
+                          time: orderData.time_stamp,
+                          orderStatus: orderData.orderStatus,
+                          index: 1,
+                          type: orderData.payment_method,
+                          amount: orderData.amount,
+                          status: orderData.status,
+                        ),
+                        ...droplocationslists.map((Column item) {
+                          return item;
+                        }).toList(),
+                        const SizedBox(height: 20),
+                        Column(
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                FirebaseDatabase.instance
+                                    .ref('/orders/${orderData.id}')
+                                    .update({"modified": ""}).then((value) {
+                                  if (Get.isDialogOpen! &&
+                                      !Get.isSnackbarOpen) {
+                                    Get.back();
+                                  }
+                                });
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                    color: accentColor,
+                                    borderRadius: BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 15,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    "Accept",
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(
+                              height: 8,
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                if (orderData.orderStatus.length >= 2) {
+                                  ToastManager.showToast(
+                                      "You cannot withdraw the order if the item is picked!");
+                                } else {
+                                  withdrawOrderConfirm("update");
                                 }
-                              });
-                            },
-                            child: Container(
-                              decoration: BoxDecoration(
-                                  color: accentColor,
-                                  borderRadius: BorderRadius.circular(8)),
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 15,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  "Accept",
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                    color: accentColor,
+                                    borderRadius: BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 15,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    "Withdraw",
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                          SizedBox(
-                            height: 8,
-                          ),
-                          GestureDetector(
-                            onTap: () {
-                              if (order!.orderStatus.length >= 2) {
-                                Get.snackbar("Error",
-                                    "You cannot withdraw the order if the item is picked!");
-                              } else {
-                                withdrawOrderConfirm("update");
-                              }
-                            },
-                            child: Container(
-                              decoration: BoxDecoration(
-                                  color: accentColor,
-                                  borderRadius: BorderRadius.circular(8)),
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 15,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  "Withdraw",
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
+                            const SizedBox(
+                              height: 15,
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -986,7 +1249,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                               fontSize: 20,
                             ),
                           ),
-                          SizedBox(
+                          const SizedBox(
                             height: 8,
                           ),
                           Text(
@@ -1000,7 +1263,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                       GestureDetector(
                         onTap: () {
                           FirebaseDatabase.instance
-                              .ref('/orders/${order!.id}')
+                              .ref('/orders/${orderData.id}')
                               .update({"modified": ""}).then((value) {
                             Get.to(() => const Home());
                           });
@@ -1009,7 +1272,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                           decoration: BoxDecoration(
                               color: accentColor,
                               borderRadius: BorderRadius.circular(8)),
-                          padding: EdgeInsets.symmetric(
+                          padding: const EdgeInsets.symmetric(
                             horizontal: 10,
                             vertical: 15,
                           ),
@@ -1042,36 +1305,40 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
   }
 
   void refresh() async {
-    var data =
-        await http.get(Uri.parse("$apiUrl/order/customer/${widget.data.id}"));
-    var orderData = OrderResponse.fromJson(jsonDecode(data.body));
-    setState(() {
-      order = orderData.order;
-      var data = List.from(order!.droplocations).asMap().entries.map((e) {
-        return Column(
-          children: [
-            const SizedBox(
-              height: 10,
-            ),
-            const Divider(),
-            AddressDetailsScreen(
-              key: Key((e.key + 2).toString()),
-              address: e.value,
-              title: "Drop Point",
-              scheduled: order!.delivery_type != "now",
-              paymentAddress: order!.payment_address,
-              time: order!.time_stamp,
-              orderStatus: order!.orderStatus,
-              index: e.key + 2,
-              type: order!.payment_method,
-              amount: order!.amount,
-              status: order!.status,
-            ),
-          ],
-        );
-      }).toList();
-      droplocationslists = data;
-    });
+    try {
+      var data =
+          await http.get(Uri.parse("$apiUrl/order/customer/${widget.data.id}"));
+      var orderData = OrderResponse.fromJson(jsonDecode(data.body));
+      setState(() {
+        order = orderData.order;
+        var data = List.from(order!.droplocations).asMap().entries.map((e) {
+          return Column(
+            children: [
+              const SizedBox(
+                height: 10,
+              ),
+              const Divider(),
+              AddressDetailsScreen(
+                key: Key((e.key + 2).toString()),
+                address: e.value,
+                title: "Drop Point",
+                scheduled: order!.delivery_type != "now",
+                paymentAddress: order!.payment_address,
+                time: order!.time_stamp,
+                orderStatus: order!.orderStatus,
+                index: e.key + 2,
+                type: order!.payment_method,
+                amount: order!.amount,
+                status: order!.status,
+              ),
+            ],
+          );
+        }).toList();
+        droplocationslists = data;
+      });
+    } catch (e) {
+      // throw Exception("Error");
+    }
   }
 
   @override
@@ -1264,14 +1531,15 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        surfaceTintColor: Colors.white,
-        automaticallyImplyLeading: false,
-        backgroundColor: Colors.white,
-        title: CustomAppBar(
-          title: "Track #${order == null ? "" : order!.id.substring(18)}",
-        ),
-      ),
+      // appBar: AppBar(
+      //   toolbarHeight: 60,
+      //   surfaceTintColor: Colors.white,
+      //   automaticallyImplyLeading: false,
+      //   backgroundColor: Colors.white,
+      //   title: CustomAppBar(
+      //     title: "Track #${order == null ? "" : order!.id.substring(18)}",
+      //   ),
+      // ),
       body: SafeArea(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1279,7 +1547,6 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
             Expanded(
               child: Stack(children: [
                 SizedBox(
-                  // height: MediaQuery.of(context).size.height - 70 - 80 - 65,
                   width: MediaQuery.of(context).size.width,
                   child: Stack(
                     children: [
@@ -1342,8 +1609,8 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
                               Padding(
-                                padding: const EdgeInsets.all(12.0),
-                                child: Row(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Column(
                                   children: [
                                     IconButton(
                                       color: Colors.white,
@@ -1362,7 +1629,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                       ),
                                     ),
                                     const SizedBox(
-                                      width: 8,
+                                      width: 5,
                                     ),
                                     IconButton(
                                       color: Colors.white,
@@ -1391,7 +1658,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                       ),
                                     ),
                                     const SizedBox(
-                                      width: 8,
+                                      width: 5,
                                     ),
                                     IconButton(
                                       color: Colors.white,
@@ -1419,12 +1686,11 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                       ),
                                     ),
                                     const SizedBox(
-                                      width: 8,
+                                      width: 5,
                                     ),
                                     IconButton(
                                       color: Colors.white,
                                       onPressed: () {
-                                        // _openBottomSheet(context);
                                         setState(() {
                                           sheetHeight = MediaQuery.of(context)
                                                   .size
@@ -1463,17 +1729,27 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                         setState(() {
                           sheetHeight -= details.primaryDelta!;
                           sheetHeight = sheetHeight.clamp(
-                              80.0, MediaQuery.of(context).size.height - 100);
+                              order != null &&
+                                      order!.orderStatus.length !=
+                                          3 + order!.droplocations.length &&
+                                      order!.status == "processing"
+                                  ? 145.0
+                                  : 80,
+                              MediaQuery.of(context).size.height - 35);
                         });
                       },
                       onVerticalDragEnd: (details) {
-                        if (sheetHeight < 150.0) {
-                          sheetHeight = 80.0;
-                        } else if (sheetHeight > 150.0 && sheetHeight < 350) {
+                        if (sheetHeight < 230.0) {
+                          sheetHeight = order != null &&
+                                  order!.orderStatus.length !=
+                                      3 + order!.droplocations.length &&
+                                  order!.status == "processing"
+                              ? 145.0
+                              : 80;
+                        } else if (sheetHeight > 230.0 && sheetHeight < 350) {
                           sheetHeight = 350.0;
                         } else if (sheetHeight > 350) {
-                          sheetHeight =
-                              MediaQuery.of(context).size.height - 100;
+                          sheetHeight = MediaQuery.of(context).size.height - 35;
                         }
                       },
                       child: Material(
@@ -1535,6 +1811,9 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                                     height: 10,
                                                   ),
                                                   Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
                                                     children: [
                                                       Text(
                                                         "Rs. ${(order!.amount * ((100 - order!.commission) / 100)).toPrecision(2).toString()}",
@@ -1544,6 +1823,11 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                                           fontWeight:
                                                               FontWeight.bold,
                                                         ),
+                                                      ),
+                                                      Text(
+                                                        "#${order!.id.substring(18)}",
+                                                        style: GoogleFonts
+                                                            .poppins(),
                                                       ),
                                                     ],
                                                   ),
@@ -1658,36 +1942,6 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                                   Row(
                                                     children: [
                                                       Text(
-                                                        "Order ID.: ",
-                                                        style:
-                                                            GoogleFonts.poppins(
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(
-                                                        width: 2,
-                                                      ),
-                                                      GestureDetector(
-                                                        onTap: () =>
-                                                            _makePhoneCall(
-                                                          order!.customer
-                                                              .mobileno,
-                                                        ),
-                                                        child: Text(
-                                                          "#${order!.id.substring(18)}",
-                                                          style: GoogleFonts
-                                                              .poppins(),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(
-                                                    height: 6,
-                                                  ),
-                                                  Row(
-                                                    children: [
-                                                      Text(
                                                         "Payment: ",
                                                         style:
                                                             GoogleFonts.poppins(
@@ -1796,7 +2050,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                                         ),
                                                         child: Center(
                                                           child: Text(
-                                                            "Withdraw Order (-Rs. 40)",
+                                                            "Withdraw Order (-Rs. ${price == null ? 40 : price!.withdrawalCharges})",
                                                             style: GoogleFonts
                                                                 .poppins(
                                                               fontWeight:
@@ -1810,7 +2064,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                                       ),
                                                     ),
                                                   const SizedBox(
-                                                    height: 70,
+                                                    height: 130,
                                                   ),
                                                 ],
                                               ),
@@ -1824,35 +2078,39 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                                   const SizedBox(
                                                     height: 10,
                                                   ),
-                                                  Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      Text(
-                                                        "Instaport Commission",
-                                                        style:
-                                                            GoogleFonts.poppins(
-                                                          fontSize: 14,
-                                                          fontWeight:
-                                                              FontWeight.bold,
+                                                  if (order!.payment_method ==
+                                                      "cod")
+                                                    Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .spaceBetween,
+                                                      children: [
+                                                        Text(
+                                                          "Instaport Commission",
+                                                          style: GoogleFonts
+                                                              .poppins(
+                                                            fontSize: 14,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
                                                         ),
-                                                      ),
-                                                      Text(
-                                                        "- ₹${(order!.amount * (order!.commission / 100)).toPrecision(1).toString()}",
-                                                        style:
-                                                            GoogleFonts.poppins(
-                                                          fontSize: 14,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          color: Colors.red,
+                                                        Text(
+                                                          "- ₹${(order!.amount * (order!.commission / 100)).toPrecision(1).toString()}",
+                                                          style: GoogleFonts
+                                                              .poppins(
+                                                            fontSize: 14,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            color: Colors.red,
+                                                          ),
                                                         ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(
-                                                    height: 7,
-                                                  ),
+                                                      ],
+                                                    ),
+                                                  if (order!.payment_method ==
+                                                      "cod")
+                                                    const SizedBox(
+                                                      height: 7,
+                                                    ),
                                                   Row(
                                                     mainAxisAlignment:
                                                         MainAxisAlignment
@@ -1928,34 +2186,47 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                   right: 0,
                   left: 0,
                   bottom: 0,
-                  child: Container(
-                    width: MediaQuery.of(context).size.width,
-                    height: 55,
-                    color: Colors.white,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          key: _mapKey,
-                          child: GestureDetector(
-                            onTap: () {
-                              order!.orderStatus.isEmpty
-                                  ? handleConfirmStatus(
-                                      "start",
-                                      Address(
-                                          text: "",
-                                          latitude: 0.0,
-                                          longitude: 0.0,
-                                          building_and_flat: "",
-                                          floor_and_wing: "",
-                                          instructions: "",
-                                          phone_number: "",
-                                          address: "Pickup Started",
-                                          key: "pickup started",
-                                          name: ""))
-                                  : order!.orderStatus.length ==
-                                          3 + order!.droplocations.length
+                  child: Column(
+                    children: [
+                      if (order != null &&
+                          order!.orderStatus.length !=
+                              3 + order!.droplocations.length &&
+                          order!.status == "processing")
+                        Container(
+                          height: 60,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border: Border(
+                              top: BorderSide(
+                                width: 1,
+                                color: Colors.black.withOpacity(0.2),
+                              ),
+                            ),
+                          ),
+                          width: MediaQuery.of(context).size.width,
+                          child: Center(
+                              child: Text(
+                            timeOfTimer,
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 18,
+                              color: _counter < 0 ? Colors.red : Colors.black,
+                            ),
+                          )),
+                        ),
+                      Container(
+                        width: MediaQuery.of(context).size.width,
+                        height: 55,
+                        color: Colors.white,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              key: _mapKey,
+                              child: GestureDetector(
+                                onTap: () {
+                                  order!.orderStatus.isEmpty
                                       ? handleConfirmStatus(
-                                          "order",
+                                          "start",
                                           Address(
                                               text: "",
                                               latitude: 0.0,
@@ -1964,51 +2235,72 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                               floor_and_wing: "",
                                               instructions: "",
                                               phone_number: "",
-                                              address: "",
-                                              key: "completed",
-                                              name: ""))
-                                      : order!.status == "delivered"
-                                          ? ()
-                                          : handleStatusUpdate();
-                            },
-                            child: Container(
-                              height: 55,
-                              width: MediaQuery.of(context).size.width,
-                              decoration: BoxDecoration(
-                                color: order == null
-                                    ? accentColor
-                                    : order!.status == "delivered"
-                                        ? accentColor.withOpacity(0.6)
-                                        : accentColor,
-                                // borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  order == null
-                                      ? "Loading"
-                                      : order!.orderStatus.isEmpty
-                                          ? "Start Pickup"
-                                          : order!.orderStatus.length == 1
-                                              ? "Parcel Picked Up"
-                                              : order!.orderStatus.length ==
-                                                      3 +
-                                                          order!.droplocations
-                                                              .length
-                                                  ? "Complete Order"
-                                                  : order!.status == "delivered"
-                                                      ? "Completed"
-                                                      : "Parcel Dropped",
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
+                                              address: "Pickup Started",
+                                              key: "pickup started",
+                                              name: ""),
+                                          "start")
+                                      : order!.orderStatus.length ==
+                                              3 + order!.droplocations.length
+                                          ? handleConfirmStatus(
+                                              "order",
+                                              Address(
+                                                  text: "",
+                                                  latitude: 0.0,
+                                                  longitude: 0.0,
+                                                  building_and_flat: "",
+                                                  floor_and_wing: "",
+                                                  instructions: "",
+                                                  phone_number: "",
+                                                  address: "Order Completed",
+                                                  key: "completed",
+                                                  name: ""),
+                                              "complete")
+                                          : order!.status == "delivered"
+                                              ? ()
+                                              : handleStatusUpdate();
+                                },
+                                child: Container(
+                                  height: 55,
+                                  width: MediaQuery.of(context).size.width,
+                                  decoration: BoxDecoration(
+                                    color: order == null
+                                        ? accentColor
+                                        : order!.status == "delivered"
+                                            ? accentColor.withOpacity(0.6)
+                                            : accentColor,
+                                    // borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      order == null
+                                          ? "Loading"
+                                          : order!.orderStatus.isEmpty
+                                              ? "Start Pickup"
+                                              : order!.orderStatus.length == 1
+                                                  ? "Parcel Picked Up"
+                                                  : order!.orderStatus.length ==
+                                                          3 +
+                                                              order!
+                                                                  .droplocations
+                                                                  .length
+                                                      ? "Complete Order"
+                                                      : order!.status ==
+                                                              "delivered"
+                                                          ? "Completed"
+                                                          : "Parcel Dropped",
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ]),
