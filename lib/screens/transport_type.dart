@@ -17,6 +17,7 @@ import 'package:instaport_rider/main.dart';
 import 'package:http/http.dart' as http;
 import 'package:instaport_rider/models/cloudinary_upload.dart';
 import 'package:instaport_rider/models/rider_model.dart';
+import 'package:instaport_rider/utils/image_modifier.dart';
 import 'package:instaport_rider/utils/toast_manager.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -97,10 +98,10 @@ class _TransportTypeState extends State<TransportType> {
         File pickedImageFile = File(image.path);
         int sizeInBytes = await pickedImageFile.length();
         double sizeInMB = sizeInBytes / (1024 * 1024);
-        if (sizeInMB <= 1.0) {
+        if (sizeInMB <= 10.0) {
           uploadToCloudinary(pickedImageFile);
         } else {
-          ToastManager.showToast('Image size should be less than 1MB');
+          ToastManager.showToast("Size should be less than 10MB");
         }
       } else {
         setState(() {

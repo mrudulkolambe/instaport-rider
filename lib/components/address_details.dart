@@ -45,8 +45,6 @@ class _AddressDetailsScreenState extends State<AddressDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    print(widget.address.key);
-    print(widget.paymentAddress!.key);
   }
 
   void _makePhoneCall(String phoneNumber) async {

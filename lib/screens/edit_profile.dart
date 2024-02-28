@@ -14,6 +14,7 @@ import 'package:http/http.dart' as http;
 import 'package:instaport_rider/main.dart';
 import 'package:instaport_rider/models/cloudinary_upload.dart';
 import 'package:instaport_rider/models/rider_model.dart';
+import 'package:instaport_rider/utils/image_modifier.dart';
 import 'package:instaport_rider/utils/mask_fomatter.dart';
 import 'package:instaport_rider/utils/toast_manager.dart';
 import 'package:instaport_rider/utils/validator.dart';
@@ -87,10 +88,10 @@ class _EditProfileState extends State<EditProfile> {
         File pickedImageFile = File(image.path);
         int sizeInBytes = await pickedImageFile.length();
         double sizeInMB = sizeInBytes / (1024 * 1024);
-        if (sizeInMB <= 1.0) {
+        if (sizeInMB <= 10.0) {
           uploadToCloudinary(pickedImageFile);
         } else {
-            ToastManager.showToast('Image size should be less than 1MB');
+        ToastManager.showToast("Size should be less than 10MB");
           setState(() {
             uploading = false;
           });

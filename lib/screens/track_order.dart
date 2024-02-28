@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
@@ -29,6 +30,8 @@ import 'package:instaport_rider/utils/toast_manager.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
+import 'dart:typed_data';
+import 'package:instaport_rider/utils/image_modifier.dart';
 
 class TrackOrder extends StatefulWidget {
   final Orders data;
@@ -87,16 +90,6 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
     }
   }
 
-  void setcustommarkericon() {
-    BitmapDescriptor.fromAssetImage(
-      ImageConfiguration.empty,
-      "assets/splash_screen.png",
-      mipmaps: true,
-    ).then((value) {
-      riderIcon = value;
-    });
-  }
-
   @override
   void initState() {
     super.initState();
@@ -107,7 +100,6 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
     });
     _initializeMap();
     _tabController = TabController(length: 2, vsync: this);
-    setcustommarkericon();
   }
 
   int _counter = 0;
@@ -394,10 +386,10 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
         File pickedImageFile = File(image.path);
         int sizeInBytes = await pickedImageFile.length();
         double sizeInMB = sizeInBytes / (1024 * 1024);
-        if (sizeInMB <= 1.0) {
-          return await uploadToCloudinary(File(image.path));
+        if (sizeInMB <= 10.0) {
+          return await uploadToCloudinary(pickedImageFile);
         } else {
-          ToastManager.showToast('Image size should be less than 1MB');
+          ToastManager.showToast("Size should be less than 10MB");
         }
       } else {
         setState(() {
@@ -528,8 +520,8 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
       var distance = await LocationService().fetchDistance(
           LatLng(posi.latitude, posi.longitude),
           LatLng(order!.drop.latitude, order!.drop.longitude));
-        handleConfirmStatus("Drop", order!.drop, "drop");
       if (distance <= 2500) {
+        handleConfirmStatus("Drop", order!.drop, "drop");
       } else {
         ToastManager.showToast(
             "Your location should be in the range of 2.5km from the location");
@@ -584,8 +576,8 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                               LatLng(posi.latitude, posi.longitude),
                               LatLng(
                                   order!.drop.latitude, order!.drop.longitude));
-                            handleConfirmStatus("Drop", order!.drop, "drop");
                           if (distance <= 2500) {
+                            handleConfirmStatus("Drop", order!.drop, "drop");
                           } else {
                             ToastManager.showToast(
                                 "Your location should be in the range of 2.5km from the location");
@@ -909,7 +901,6 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
       );
 
       _getCurrentLocation();
-      setcustommarkericon();
       var data = List.from(order!.droplocations).asMap().entries.map((e) {
         return Column(
           children: [
@@ -956,6 +947,33 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
               .get(Uri.parse("$apiUrl/order/customer/${widget.data.id}"));
           var orderData =
               OrderResponse.fromJson(jsonDecode(updatedData.body)).order;
+          setState(() {
+            var modData =
+                List.from(orderData.droplocations).asMap().entries.map((e) {
+              return Column(
+                children: [
+                  const SizedBox(
+                    height: 10,
+                  ),
+                  const Divider(),
+                  AddressDetailsScreen(
+                    key: Key((e.key + 2).toString()),
+                    address: e.value,
+                    title: "Drop Point",
+                    scheduled: orderData.delivery_type != "now",
+                    paymentAddress: orderData.payment_address,
+                    time: orderData.time_stamp,
+                    orderStatus: orderData.orderStatus,
+                    index: e.key + 2,
+                    type: orderData.payment_method,
+                    amount: orderData.amount,
+                    status: orderData.status,
+                  ),
+                ],
+              );
+            }).toList();
+            droplocationslists = modData;
+          });
           if (data.modified == "data") {
             Get.dialog(
               WillPopScope(
@@ -1159,6 +1177,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                 FirebaseDatabase.instance
                                     .ref('/orders/${orderData.id}')
                                     .update({"modified": ""}).then((value) {
+                                      markersAndPolylines(orderData);
                                   if (Get.isDialogOpen! &&
                                       !Get.isSnackbarOpen) {
                                     Get.back();
@@ -1560,7 +1579,6 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                             if (CurrentLocation != null)
                               Marker(
                                 markerId: const MarkerId("Track Marker"),
-                                // icon: riderIcon,
                                 infoWindow: const InfoWindow(title: "Rider"),
                                 position: LatLng(
                                   CurrentLocation!.latitude,

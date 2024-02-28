@@ -58,6 +58,7 @@ dependencies:
   background_location: ^0.11.8
   mask_text_input_formatter: ^2.9.0
   fluttertoast: ^8.2.4
+  image: ^4.1.7
 
 dev_dependencies:
   flutter_test:
