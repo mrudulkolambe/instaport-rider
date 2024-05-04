@@ -262,23 +262,31 @@ class _CreateAccountState extends State<CreateAccount> {
                                           body: jsonEncode({
                                             'fullname': _namecontroller.text,
                                             'mobileno': _phonecontroller.text,
-                                            'password':
-                                                _passwordcontroller.text,
+                                            'password':  _passwordcontroller.text,
                                           }),
                                         );
-                                        final data = SignInResponse.fromJson(
-                                          json.decode(response.body),
-                                        );
-                                        ToastManager.showToast(data.message);
-                                        if (data.error) {
+                                        if (response.body
+                                            .contains("duplicate")) {
+                                          ToastManager.showToast("Mobile number already in use");
                                           setState(() {
                                             loading = false;
                                           });
                                         } else {
-                                          setState(() {
-                                            loading = false;
-                                          });
+                                          final data = SignInResponse.fromJson(
+                                            json.decode(response.body),
+                                          );
+                                          ToastManager.showToast(data.message);
+                                          if (data.error) {
+                                            setState(() {
+                                              loading = false;
+                                            });
+                                          } else {
+                                            setState(() {
+                                              loading = false;
+                                            });
+                                          }
                                         }
+
                                         // ignore: empty_catches
                                       } catch (error) {
                                         setState(() {

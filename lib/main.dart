@@ -16,6 +16,7 @@ import 'package:instaport_rider/screens/home.dart';
 import 'package:instaport_rider/screens/inreview.dart';
 import 'package:instaport_rider/screens/login.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:instaport_rider/screens/verification.dart';
 import 'package:instaport_rider/services/tracking_service.dart';
 import 'package:instaport_rider/utils/toast_manager.dart';
 import 'package:map_location_picker/google_map_location_picker.dart';
@@ -25,6 +26,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   await GetStorage.init();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -133,7 +135,10 @@ class _SplashScreenState extends State<SplashScreen> {
         final data = await http.get(Uri.parse('$apiUrl/rider/'),
             headers: {'Authorization': 'Bearer $token'});
         final userData = RiderDataResponse.fromJson(jsonDecode(data.body));
-        if (!userData.rider.approve) {
+        print(!userData.rider.verified);
+        if (!userData.rider.verified) {
+          Get.to(() => const Verification());
+        } else if (!userData.rider.approve) {
           Get.to(() => const InReview());
         } else if (userData.rider.approve &&
             userData.rider.status == "disabled") {

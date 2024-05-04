@@ -3,8 +3,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:ui' as ui;
 import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -17,6 +17,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:instaport_rider/components/address_details.dart';
 import 'package:instaport_rider/constants/colors.dart';
 import 'package:instaport_rider/controllers/app.dart';
+import 'package:instaport_rider/firebase_messaging/firebase_messaging.dart';
 import 'package:instaport_rider/main.dart';
 import 'package:instaport_rider/models/address_model.dart';
 import 'package:instaport_rider/models/cloudinary_upload.dart';
@@ -30,8 +31,6 @@ import 'package:instaport_rider/utils/toast_manager.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
-import 'dart:typed_data';
-import 'package:instaport_rider/utils/image_modifier.dart';
 
 class TrackOrder extends StatefulWidget {
   final Orders data;
@@ -63,7 +62,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
   late TabController _tabController;
   final _storage = GetStorage();
   Timer? _timer;
-  late StreamSubscription<DatabaseEvent> _databaseListener;
+  StreamSubscription<DatabaseEvent>? _databaseListener;
   DatabaseReference ref = FirebaseDatabase.instance.ref();
   final int minute = 60000;
   String timeOfTimer = "";
@@ -75,11 +74,18 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
       endpoint =
           "https://www.google.com/maps/dir/?api=1&origin=${src.latitude},${src.longitude}&destination=${dest.latitude},${dest.longitude}&travelmode=motorcycle&avoid=tolls&units=imperial&language=en&departure_time=now";
     } else {
-      final String waypointsString = droplocations
+      final List<LatLng> dropArr = [];
+      dropArr.add(dest);
+      if(droplocations.length > 1){
+        for (var i = 0; i < droplocations.length - 2; i++) {
+          dropArr.add(LatLng(droplocations[i].latitude, droplocations[i].longitude)); 
+        }
+      }
+      final String waypointsString = dropArr
           .map((address) => '${address.latitude},${address.longitude}')
           .join('|');
       endpoint =
-          "https://www.google.com/maps/dir/?api=1&origin=${src.latitude},${src.longitude}&destination=${dest.latitude},${dest.longitude}&travelmode=driving&avoid=tolls&units=imperial&language=en&departure_time=now&waypoints=$waypointsString";
+          "https://www.google.com/maps/dir/?api=1&origin=${src.latitude},${src.longitude}&destination=${droplocations.last.latitude},${droplocations.last.longitude}&travelmode=driving&avoid=tolls&units=imperial&language=en&departure_time=now&waypoints=$waypointsString";
     }
 
     if (!await launchUrl(
@@ -239,6 +245,10 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
           Get.back();
         }
         var orderData = MessageResponse.fromJson(jsonDecode(data.body));
+        FirebaseMessagingAPI().localNotificationsApp(RemoteNotification(
+          title: "Order Withdrawn",
+          body: "Order #${order!.id.substring(18)} has been successfully withdrawn!"
+        ));
         Get.to(() => const Home());
         ToastManager.showToast(orderData.message);
       } else {
@@ -488,6 +498,12 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
       if (response.statusCode == 200) {
         var json = await response.stream.bytesToString();
         var updatedOrderData = OrderResponse.fromJson(jsonDecode(json));
+        if(_counter < 0){
+          FirebaseMessagingAPI().localNotificationsApp(RemoteNotification(
+            title: "Order Completed",
+            body: "The order was not delivered on time."
+          ));
+        }
         setState(() {
           order = updatedOrderData.order;
         });
@@ -975,6 +991,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
             droplocationslists = modData;
           });
           if (data.modified == "data") {
+            FirebaseMessagingAPI().localNotificationsApp(RemoteNotification(title: "Order Updated", body: "Order #${widget.data.id.substring(18)} has been updated by the customer!"));
             Get.dialog(
               WillPopScope(
                 onWillPop: () async {
@@ -1177,7 +1194,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                 FirebaseDatabase.instance
                                     .ref('/orders/${orderData.id}')
                                     .update({"modified": ""}).then((value) {
-                                      markersAndPolylines(orderData);
+                                  markersAndPolylines(orderData);
                                   if (Get.isDialogOpen! &&
                                       !Get.isSnackbarOpen) {
                                     Get.back();
@@ -1247,6 +1264,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
               barrierDismissible: false,
             );
           } else if (data.modified == "cancel") {
+            FirebaseMessagingAPI().localNotificationsApp(RemoteNotification(title: "Order Cancelled", body: "Order #${widget.data.id.substring(18)} has been cancelled by the customer!"));
             Get.dialog(
               Dialog(
                 backgroundColor: Colors.white,
@@ -1367,7 +1385,9 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
     newgooglemapcontroller.dispose();
     if (order!.rider != null) {
       ref.onValue.drain();
-      _databaseListener.cancel();
+      if (_databaseListener != null) {
+        _databaseListener!.cancel();
+      }
     }
     super.dispose();
     // BackgroundLocation.stopLocationService();

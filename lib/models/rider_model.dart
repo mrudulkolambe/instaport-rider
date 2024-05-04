@@ -46,6 +46,7 @@ class Rider {
   String? accname;
   String? drivinglicense;
   List<String>? orders;
+  bool verified;
 
   Rider({
     required this.id,
@@ -58,6 +59,7 @@ class Rider {
     required this.wallet_amount,
     required this.status,
     required this.approve,
+    required this.verified,
     required this.requestedAmount,
     this.address,
     this.aadharcard,
@@ -78,6 +80,7 @@ class Rider {
     final mobileno = json['mobileno'] as String;
     final status = json['status'] as String;
     final token = json['token'] as String;
+    final verified = json["verified"] as bool;
     final approve = json['approve'] as bool;
     final role = json['role'] as String;
     final age = json['age'] as String;
@@ -106,6 +109,7 @@ class Rider {
       id: id,
       fullname: fullname,
       status: status,
+      verified: verified,
       mobileno: mobileno,
       role: role,
       age: age,

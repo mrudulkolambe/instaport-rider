@@ -5,6 +5,7 @@ class RiderController extends GetxController {
   Rider rider = Rider(
     id: "",
     fullname: "",
+    verified: false,
     mobileno: "",
     token: "",
     role: "customer",

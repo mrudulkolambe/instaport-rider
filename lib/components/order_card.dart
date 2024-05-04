@@ -6,6 +6,7 @@ import 'package:instaport_rider/components/distanceFutureBuilder.dart';
 import 'package:instaport_rider/components/modals/takeorder_confirm.dart';
 import 'package:instaport_rider/constants/colors.dart';
 import 'package:instaport_rider/controllers/app.dart';
+import 'package:instaport_rider/models/address_model.dart';
 import 'package:instaport_rider/models/order_model.dart';
 import 'package:instaport_rider/screens/track_order.dart';
 import 'package:instaport_rider/services/location_service.dart';
@@ -17,14 +18,14 @@ class OrderCard extends StatefulWidget {
   final Orders data;
   final bool modal;
   final bool isSelected;
-  final Function(bool) onSelectionChanged;
+  final Function(bool)? onSelectionChanged;
 
   const OrderCard({
     super.key,
     required this.data,
     required this.modal,
     required this.isSelected,
-    required this.onSelectionChanged,
+    this.onSelectionChanged,
   });
 
   @override
@@ -55,6 +56,35 @@ class _OrderCardState extends State<OrderCard> {
     ));
   }
 
+  Future<void> _launchUrlMap(
+      LatLng src, LatLng dest, List<Address> droplocations) async {
+  String endpoint = "";
+    if (droplocations.isEmpty) {
+      endpoint =
+          "https://www.google.com/maps/dir/?api=1&origin=${src.latitude},${src.longitude}&destination=${dest.latitude},${dest.longitude}&travelmode=motorcycle&avoid=tolls&units=imperial&language=en&departure_time=now";
+    } else {
+      final List<LatLng> dropArr = [];
+      dropArr.add(dest);
+      if(droplocations.length > 1){
+        for (var i = 0; i < droplocations.length - 2; i++) {
+          dropArr.add(LatLng(droplocations[i].latitude, droplocations[i].longitude)); 
+        }
+      }
+      final String waypointsString = dropArr
+          .map((address) => '${address.latitude},${address.longitude}')
+          .join('|');
+      endpoint =
+          "https://www.google.com/maps/dir/?api=1&origin=${src.latitude},${src.longitude}&destination=${droplocations.last.latitude},${droplocations.last.longitude}&travelmode=driving&avoid=tolls&units=imperial&language=en&departure_time=now&waypoints=$waypointsString";
+    }
+
+    if (!await launchUrl(
+      Uri.parse(endpoint),
+      mode: LaunchMode.externalApplication,
+    )) {
+      throw Exception('Could not launch $endpoint');
+    }
+  }
+
   Future<void> _launchUrl(LatLng src, LatLng dest) async {
     final String url =
         "https://www.google.com/maps/dir/?api=1&origin=${src.latitude},${src.longitude}&destination=${dest.latitude},${dest.longitude}&travelmode=motorcycle&avoid=tolls&units=imperial&language=en&departure_time=now";
@@ -67,7 +97,7 @@ class _OrderCardState extends State<OrderCard> {
   }
 
   List<Widget> buildListWidget() {
-    return widget.data.droplocations.map((e) {
+    return widget.data.droplocations.asMap().entries.map((e) {
       return Column(
         children: [
           Row(
@@ -84,16 +114,16 @@ class _OrderCardState extends State<OrderCard> {
                 child: GestureDetector(
                   onTap: () => _launchUrl(
                     LatLng(
-                      e.latitude,
-                      e.longitude,
+                      e.value.latitude,
+                      e.value.longitude,
                     ),
                     LatLng(
-                      e.latitude,
-                      e.longitude,
+                      e.value.latitude,
+                      e.value.longitude,
                     ),
                   ),
                   child: Text(
-                    obscureString(e.text),
+                    obscureString(e.value.text),
                     softWrap: true,
                     style: GoogleFonts.poppins(
                       fontWeight: FontWeight.w600,
@@ -113,7 +143,7 @@ class _OrderCardState extends State<OrderCard> {
                 width: 22,
               ),
               Text(
-                "${(distance / 1000).toPrecision(2)}km away",
+                "${widget.data.distances[e.key + 1].toString()}km away",
                 style: GoogleFonts.poppins(
                   fontWeight: FontWeight.w500,
                   fontSize: 10,
@@ -160,13 +190,29 @@ class _OrderCardState extends State<OrderCard> {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      Text(
-                        "#${widget.data.id.substring(20)}",
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                      IconButton(
+                          focusColor: accentColor,
+                          hoverColor: accentColor,
+                          style: ButtonStyle(
+                              backgroundColor: MaterialStateColor.resolveWith(
+                                  (states) => accentColor)),
+                          onPressed: () {
+                            _launchUrlMap(
+                              LatLng(
+                                widget.data.pickup.latitude,
+                                widget.data.pickup.longitude,
+                              ),
+                              LatLng(
+                                widget.data.drop.latitude,
+                                widget.data.drop.longitude,
+                              ),
+                              widget.data.droplocations,
+                            );
+                          },
+                          icon: Icon(
+                            Icons.directions,
+                            color: Colors.black,
+                          ))
                     ],
                   ),
                   const SizedBox(
@@ -242,22 +288,32 @@ class _OrderCardState extends State<OrderCard> {
                                 const SizedBox(
                                   width: 22,
                                 ),
-                                GetBuilder<AppController>(
-                                    init: AppController(),
-                                    builder: (controller) {
-                                      return DistanceFutureBuilder(
-                                        src: LatLng(
-                                          controller.currentposition.value
-                                              .target.latitude,
-                                          controller.currentposition.value
-                                              .target.longitude,
+                                widget.data.status == "delivered"
+                                    ? Text(
+                                        "0.0km away",
+                                        overflow: TextOverflow.ellipsis,
+                                        softWrap: false,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w500,
                                         ),
-                                        dest: LatLng(
-                                          widget.data.pickup.latitude,
-                                          widget.data.pickup.longitude,
-                                        ),
-                                      );
-                                    }),
+                                      )
+                                    : GetBuilder<AppController>(
+                                        init: AppController(),
+                                        builder: (controller) {
+                                          return DistanceFutureBuilder(
+                                            src: LatLng(
+                                              controller.currentposition.value
+                                                  .target.latitude,
+                                              controller.currentposition.value
+                                                  .target.longitude,
+                                            ),
+                                            dest: LatLng(
+                                              widget.data.pickup.latitude,
+                                              widget.data.pickup.longitude,
+                                            ),
+                                          );
+                                        }),
                               ],
                             )
                           ],
@@ -310,14 +366,11 @@ class _OrderCardState extends State<OrderCard> {
                           const SizedBox(
                             width: 22,
                           ),
-                          DistanceFutureBuilder(
-                            src: LatLng(
-                              widget.data.pickup.latitude,
-                              widget.data.pickup.latitude,
-                            ),
-                            dest: LatLng(
-                              widget.data.drop.latitude,
-                              widget.data.drop.longitude,
+                          Text(
+                            "${widget.data.distances[0].toString()}km away",
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 10,
                             ),
                           ),
                         ],
@@ -329,6 +382,34 @@ class _OrderCardState extends State<OrderCard> {
                       const Divider(),
                       const SizedBox(
                         height: 5,
+                      ),
+                      Row(
+                        children: [
+                          Text(
+                            "Order ID: ",
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(
+                            width: 2,
+                          ),
+                          Expanded(
+                            child: Text(
+                              "#${widget.data.id.substring(20)}",
+                              overflow: TextOverflow.ellipsis,
+                              softWrap: false,
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(
+                        height: 3,
                       ),
                       Row(
                         children: [
@@ -401,6 +482,34 @@ class _OrderCardState extends State<OrderCard> {
                           Expanded(
                             child: Text(
                               widget.data.vehicle,
+                              overflow: TextOverflow.ellipsis,
+                              softWrap: false,
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(
+                        height: 3,
+                      ),
+                      Row(
+                        children: [
+                          Text(
+                            "Pickup: ",
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(
+                            width: 2,
+                          ),
+                          Expanded(
+                            child: Text(
+                              "${readTimestampAsTime(widget.data.time_stamp)} - ${readTimestampAsTime(widget.data.time_stamp + 45 * 60000)}",
                               overflow: TextOverflow.ellipsis,
                               softWrap: false,
                               style: GoogleFonts.poppins(
@@ -514,372 +623,403 @@ class _OrderCardState extends State<OrderCard> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        if (widget.data.status == "new") {
-          _openBottomSheet(context);
-        } else {
-          Get.to(() => TrackOrder(data: widget.data));
-        }
-      },
-      // onLongPress: () {
-      //   widget.onSelectionChanged(!widget.isSelected);
-      //   print(!widget.isSelected);
-      // },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(
-            color: accentColor,
-            width: 1,
-          ),
-          // color: widget.isSelected ? Colors.blue[50] : Colors.white,
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x4F000000),
-              blurRadius: 18,
-              offset: Offset(2, 4),
-              spreadRadius: -15,
-            )
-          ],
-          borderRadius: BorderRadius.circular(10),
+    return Column(
+      children: [
+        SizedBox(
+          height: 10,
         ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
-          child: Column(
-            children: [
-              // Checkbox(
-              //   value: widget.isSelected,
-              //   onChanged: (value) {
-              //     // Call the onSelectionChanged callback when the checkbox changes
-              //     widget.onSelectionChanged(value ?? false);
-              //   },
-              // ),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        GestureDetector(
+          onTap: () {
+            if (widget.data.status == "new") {
+              _openBottomSheet(context);
+            } else {
+              Get.to(() => TrackOrder(data: widget.data));
+            }
+          },
+          // onLongPress: () {
+          //   widget.onSelectionChanged(!widget.isSelected);
+          //   print(!widget.isSelected);
+          // },
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(
+                color: accentColor,
+                width: 1,
+              ),
+              // color: widget.isSelected ? Colors.blue[50] : Colors.white,
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x4F000000),
+                  blurRadius: 18,
+                  offset: Offset(2, 4),
+                  spreadRadius: -15,
+                )
+              ],
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
+              child: Column(
                 children: [
-                  Text(
-                    "Rs. ${(widget.data.amount * (100 - widget.data.commission) / 100).toPrecision(2)}",
-                    style: GoogleFonts.poppins(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  Text(
-                    "#${widget.data.id.substring(20)}",
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "${widget.data.droplocations.length + 2} Addresses (${widget.data.payment_method == "cod" ? "COD" : "Online"})",
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                    ),
-                  ),
-                  if (widget.data.delivery_type == "scheduled")
-                    const Icon(
-                      Icons.timer,
-                      color: accentColor,
-                      size: 18,
-                    ),
-                ],
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              Column(
-                children: [
+                  // Checkbox(
+                  //   value: widget.isSelected,
+                  //   onChanged: (value) {
+                  //     // Call the onSelectionChanged callback when the checkbox changes
+                  //     widget.onSelectionChanged(value ?? false);
+                  //   },
+                  // ),
+        
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        size: 14,
-                        weight: 1.2,
+                      Text(
+                        "Rs. ${(widget.data.amount * (100 - widget.data.commission) / 100).toPrecision(2)}",
+                        style: GoogleFonts.poppins(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                      const SizedBox(
-                        width: 8,
-                      ),
-                      Expanded(
-                        child: Text(
-                          widget.data.status == "new" ? obscureString(widget.data.pickup.text) : widget.data.pickup.text,
-                          softWrap: true,
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                          ),
+                      Text(
+                        "#${widget.data.id.substring(20)}",
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(
-                    height: 2,
+                    height: 10,
                   ),
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const SizedBox(
-                        width: 22,
-                      ),
-                      GetBuilder<AppController>(
-                          init: AppController(),
-                          builder: (controller) {
-                            return DistanceFutureBuilder(
-                              src: LatLng(
-                                controller
-                                    .currentposition.value.target.latitude,
-                                controller
-                                    .currentposition.value.target.longitude,
-                              ),
-                              dest: LatLng(
-                                widget.data.pickup.latitude,
-                                widget.data.pickup.longitude,
-                              ),
-                            );
-                          }),
-                    ],
-                  )
-                ],
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              Column(
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        size: 14,
-                        weight: 1.2,
-                      ),
-                      const SizedBox(
-                        width: 8,
-                      ),
-                      Expanded(
-                        child: Text(
-                          widget.data.status == "new" ? obscureString(widget.data.drop.text) : widget.data.drop.text,
-                          softWrap: true,
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                          ),
+                      Text(
+                        "${widget.data.droplocations.length + 2} Addresses (${widget.data.payment_method == "cod" ? "COD" : "Online"})",
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
                         ),
                       ),
+                      if (widget.data.delivery_type == "scheduled")
+                        const Icon(
+                          Icons.timer,
+                          color: accentColor,
+                          size: 18,
+                        ),
                     ],
                   ),
                   const SizedBox(
-                    height: 5,
+                    height: 10,
                   ),
-                  Row(
+                  Column(
                     children: [
-                      const SizedBox(
-                        width: 22,
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 14,
+                            weight: 1.2,
+                          ),
+                          const SizedBox(
+                            width: 8,
+                          ),
+                          Expanded(
+                            child: Text(
+                              widget.data.status == "new"
+                                  ? obscureString(widget.data.pickup.text)
+                                  : widget.data.pickup.text,
+                              softWrap: true,
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      DistanceFutureBuilder(
-                        src: LatLng(
-                          widget.data.pickup.latitude,
-                          widget.data.pickup.longitude,
-                        ),
-                        dest: LatLng(
-                          widget.data.drop.latitude,
-                          widget.data.drop.longitude,
-                        ),
+                      const SizedBox(
+                        height: 2,
+                      ),
+                      Row(
+                        children: [
+                          const SizedBox(
+                            width: 22,
+                          ),
+                          widget.data.status == "delivered"
+                              ? Text(
+                                  "0.0km away",
+                                  overflow: TextOverflow.ellipsis,
+                                  softWrap: false,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                )
+                              : GetBuilder<AppController>(
+                                  init: AppController(),
+                                  builder: (controller) {
+                                    return DistanceFutureBuilder(
+                                      src: LatLng(
+                                        controller
+                                            .currentposition.value.target.latitude,
+                                        controller
+                                            .currentposition.value.target.longitude,
+                                      ),
+                                      dest: LatLng(
+                                        widget.data.pickup.latitude,
+                                        widget.data.pickup.longitude,
+                                      ),
+                                    );
+                                  }),
+                        ],
                       )
                     ],
                   ),
-                  if (widget.data.droplocations.length > 1)
-                    Column(
-                      children: [
-                        const SizedBox(
-                          height: 2,
-                        ),
-                        Row(
-                          children: [
-                            RotatedBox(
-                              quarterTurns: 1,
-                              child: Text(
-                                "...",
-                                style: GoogleFonts.poppins(
-                                    fontSize: 30, letterSpacing: 2),
+                  const SizedBox(
+                    height: 10,
+                  ),
+                  Column(
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 14,
+                            weight: 1.2,
+                          ),
+                          const SizedBox(
+                            width: 8,
+                          ),
+                          Expanded(
+                            child: Text(
+                              widget.data.status == "new"
+                                  ? obscureString(widget.data.drop.text)
+                                  : widget.data.drop.text,
+                              softWrap: true,
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
                               ),
                             ),
-                          ],
-                        ),
-                        const SizedBox(
-                          height: 2,
-                        ),
-                      ],
-                    ),
-                  if (widget.data.droplocations.isNotEmpty)
-                    Column(
-                      children: [
-                        const SizedBox(
-                          height: 10,
-                        ),
-                        Row(
+                          ),
+                        ],
+                      ),
+                      const SizedBox(
+                        height: 5,
+                      ),
+                      Row(
+                        children: [
+                          const SizedBox(
+                            width: 22,
+                          ),
+                          Text(
+                            "${widget.data.distances[0].toString()}km away",
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (widget.data.droplocations.length > 1)
+                        Column(
                           children: [
-                            const Icon(
-                              Icons.arrow_forward_ios_rounded,
-                              size: 14,
-                              weight: 1.2,
-                            ),
                             const SizedBox(
-                              width: 8,
+                              height: 2,
                             ),
-                            Expanded(
-                              child: Text(
-                                widget.data.status == "new" ? obscureString(widget.data.droplocations.last.text) : widget.data.droplocations.last.text,
-                                softWrap: true,
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12,
+                            Row(
+                              children: [
+                                RotatedBox(
+                                  quarterTurns: 1,
+                                  child: Text(
+                                    "...",
+                                    style: GoogleFonts.poppins(
+                                        fontSize: 30, letterSpacing: 2),
+                                  ),
                                 ),
-                              ),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 2,
                             ),
                           ],
                         ),
-                        const SizedBox(
-                          height: 5,
-                        ),
-                        Row(
+                      if (widget.data.droplocations.isNotEmpty)
+                        Column(
                           children: [
                             const SizedBox(
-                              width: 22,
+                              height: 10,
                             ),
-                            DistanceFutureBuilder(
-                              src: widget.data.droplocations.length >= 2
-                                  ? LatLng(
-                                      widget
-                                          .data
-                                          .droplocations[
-                                              widget.data.droplocations.length -
-                                                  2]
-                                          .latitude,
-                                      widget
-                                          .data
-                                          .droplocations[
-                                              widget.data.droplocations.length -
-                                                  2]
-                                          .longitude,
-                                    )
-                                  : LatLng(
-                                      widget.data.drop.latitude,
-                                      widget.data.drop.longitude,
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  size: 14,
+                                  weight: 1.2,
+                                ),
+                                const SizedBox(
+                                  width: 8,
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    widget.data.status == "new"
+                                        ? obscureString(
+                                            widget.data.droplocations.last.text)
+                                        : widget.data.droplocations.last.text,
+                                    softWrap: true,
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12,
                                     ),
-                              dest: LatLng(
-                                widget.data.droplocations.last.latitude,
-                                widget.data.droplocations.last.longitude,
-                              ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 5,
+                            ),
+                            Row(
+                              children: [
+                                const SizedBox(
+                                  width: 22,
+                                ),
+                                Text(
+                                  "${widget.data.distances[widget.data.distances.length - 1].toString()}km away",
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  const SizedBox(
-                    height: 5,
-                  ),
-                  const Divider(),
-                  const SizedBox(
-                    height: 5,
-                  ),
-                  Row(
-                    children: [
-                      Text(
-                        "Commodity: ",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      const SizedBox(
+                        height: 5,
+                      ),
+                      const Divider(),
+                      const SizedBox(
+                        height: 5,
+                      ),
+                      Row(
+                        children: [
+                          Text(
+                            "Commodity: ",
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(
+                            width: 2,
+                          ),
+                          Expanded(
+                            child: Text(
+                              "${widget.data.package} (${widget.data.parcel_weight})",
+                              overflow: TextOverflow.ellipsis,
+                              softWrap: false,
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(
-                        width: 2,
+                        height: 3,
                       ),
-                      Expanded(
-                        child: Text(
-                          "${widget.data.package} (${widget.data.parcel_weight})",
-                          overflow: TextOverflow.ellipsis,
-                          softWrap: false,
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                      Row(
+                        children: [
+                          Text(
+                            "Time: ",
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(
-                    height: 3,
-                  ),
-                  Row(
-                    children: [
-                      Text(
-                        "Time: ",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
+                          const SizedBox(
+                            width: 2,
+                          ),
+                          Expanded(
+                            child: Text(
+                              readTimestamp(widget.data.time_stamp),
+                              overflow: TextOverflow.ellipsis,
+                              softWrap: false,
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(
-                        width: 2,
+                        height: 3,
                       ),
-                      Expanded(
-                        child: Text(
-                          readTimestamp(widget.data.time_stamp),
-                          overflow: TextOverflow.ellipsis,
-                          softWrap: false,
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                      Row(
+                        children: [
+                          Text(
+                            "Vehicle: ",
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(
-                    height: 3,
-                  ),
-                  Row(
-                    children: [
-                      Text(
-                        "Vehicle: ",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
+                          const SizedBox(
+                            width: 2,
+                          ),
+                          Expanded(
+                            child: Text(
+                              widget.data.vehicle,
+                              overflow: TextOverflow.ellipsis,
+                              softWrap: false,
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(
-                        width: 2,
+                        height: 3,
                       ),
-                      Expanded(
-                        child: Text(
-                          widget.data.vehicle,
-                          overflow: TextOverflow.ellipsis,
-                          softWrap: false,
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                      Row(
+                        children: [
+                          Text(
+                            "Pickup: ",
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
+                          const SizedBox(
+                            width: 2,
+                          ),
+                          Expanded(
+                            child: Text(
+                              "${readTimestampAsTime(widget.data.time_stamp)} - ${readTimestampAsTime(widget.data.time_stamp + 45 * 60000)}",
+                              overflow: TextOverflow.ellipsis,
+                              softWrap: false,
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 }

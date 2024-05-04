@@ -21,6 +21,7 @@ import 'package:instaport_rider/main.dart';
 import 'package:instaport_rider/models/order_model.dart';
 import 'package:instaport_rider/models/rider_model.dart';
 import 'package:instaport_rider/services/location_service.dart';
+import 'package:instaport_rider/utils/toast_manager.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -78,14 +79,23 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
       loading = true;
     });
     const String url = '$apiUrl/order/riders';
-    final response = await http
-        .get(Uri.parse(url), headers: {'Authorization': 'Bearer $token'});
+    print(url);
+    print(token);
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {'Authorization': 'Bearer $token'},
+    );
     final data = AllOrderResponse.fromJson(json.decode(response.body));
     var sortedOrders = await sortOrders(data.orders);
-    final riderData = await http.get(Uri.parse('$apiUrl/rider/'),
-        headers: {'Authorization': 'Bearer $token'});
+    final riderData = await http.get(
+      Uri.parse('$apiUrl/rider/'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
     final userData = RiderDataResponse.fromJson(jsonDecode(riderData.body));
     riderController.updateRider(userData.rider);
+    if (riderController.rider.wallet_amount < 0) {
+      ToastManager.showToast("Clear the dues! Only online orders are visible");
+    }
     setState(() {
       ordersSearch = sortedOrders;
       orders = sortedOrders;
@@ -110,6 +120,26 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
     }).toList();
   }
 
+Widget _buildTabWithRefreshIndicator(List<Orders> tabOrders) {
+  return RefreshIndicator(
+    onRefresh: () => getPastOrders(),
+    child: ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      children: tabOrders.isEmpty
+          ? [
+              Center(child: SvgPicture.string(nodatafound)),
+            ]
+          : tabOrders.map((order) {
+              return OrderCard(
+                data: order,
+                modal: true,
+                isSelected: false,
+              );
+            }).toList(),
+    ),
+  );
+}
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -117,8 +147,8 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
       length: 3,
       child: Scaffold(
         backgroundColor: Colors.white,
-          appBar: AppBar(
-        toolbarHeight: 60,
+        appBar: AppBar(
+          toolbarHeight: 60,
           surfaceTintColor: Colors.white,
           automaticallyImplyLeading: false,
           backgroundColor: Colors.white,
@@ -128,22 +158,121 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
           ),
           bottom: TabBar(
             controller: _tabController,
-            indicatorSize: TabBarIndicatorSize.tab,
-            indicatorWeight: 2.5,
+            indicatorSize: TabBarIndicatorSize.label,
+            indicatorWeight: 1.5,
             enableFeedback: false,
             labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
             labelColor: Colors.black,
             indicatorColor: accentColor,
             unselectedLabelColor: Colors.black26,
-            tabs: const <Widget>[
+            tabs: <Widget>[
               Tab(
-                text: "Available",
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Available",
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(
+                      width: 2,
+                    ),
+                    Container(
+                      height: 18,
+                      width: 18,
+                      decoration: BoxDecoration(
+                          color: accentColor,
+                          borderRadius: BorderRadius.circular(8)),
+                      child: Center(
+                        child: Text(
+                          orders
+                              .where(
+                                (element) =>
+                                    element.rider == null &&
+                                    element.status == "new",
+                              )
+                              .length
+                              .toString(),
+                          style: GoogleFonts.poppins(fontSize: 8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               Tab(
-                text: "Active",
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Active",
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(
+                      width: 2,
+                    ),
+                    Container(
+                      height: 18,
+                      width: 18,
+                      decoration: BoxDecoration(
+                          color: accentColor,
+                          borderRadius: BorderRadius.circular(8)),
+                      child: Center(
+                        child: Text(
+                          orders
+                              .where(
+                                (element) =>
+                                    element.rider != null &&
+                                    element.status == "processing",
+                              )
+                              .length
+                              .toString(),
+                          style: GoogleFonts.poppins(fontSize: 8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               Tab(
-                text: "Completed",
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Completed",
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(
+                      width: 2,
+                    ),
+                    Container(
+                      height: 18,
+                      width: 18,
+                      decoration: BoxDecoration(
+                          color: accentColor,
+                          borderRadius: BorderRadius.circular(8)),
+                      child: Center(
+                        child: Text(
+                          orders
+                              .where(
+                                (element) =>
+                                    element.rider != null &&
+                                    element.status == "delivered",
+                              )
+                              .length
+                              .toString(),
+                          style: GoogleFonts.poppins(fontSize: 8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -167,237 +296,43 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                   ),
                 ],
               )
-            : RefreshIndicator(
-                onRefresh: () => getPastOrders(),
-                child: SafeArea(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Column(
-                      children: [
-                        const SizedBox(
-                          height: 20,
-                        ),
-                        SizedBox(
-                          height: MediaQuery.of(context).size.height - 30 - 200,
-                          child: TabBarView(
-                            controller: _tabController,
-                            children: [
-                              loading
-                                  ? const SpinKitFadingCircle(
-                                      color: accentColor,
-                                    )
-                                  : orders
-                                          .where(
-                                            (element) =>
-                                                element.rider == null &&
-                                                element.status == "new",
-                                          )
-                                          .isEmpty
-                                      ? Center(
-                                          child: SvgPicture.string(nodatafound),
-                                        )
-                                      : Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 25.0,
-                                          ),
-                                          child: ListView.separated(
-                                              physics:
-                                                  const BouncingScrollPhysics(),
-                                              scrollDirection: Axis.vertical,
-                                              itemBuilder: (context, index) {
-                                                final order = orders
-                                                    .where(
-                                                      (element) =>
-                                                          element.rider ==
-                                                              null &&
-                                                          element.status ==
-                                                              "new",
-                                                    )
-                                                    .toList()[index];
-                                                final isSelected =
-                                                    selectedStates[order.id] ==
-                                                            null
-                                                        ? false
-                                                        : true;
-                                                return OrderCard(
-                                                  isSelected: isSelected,
-                                                  onSelectionChanged:
-                                                      (isSelected) {
-                                                    print(isSelected);
-                                                    onSelectionChanged(
-                                                      order.id,
-                                                      isSelected,
-                                                    );
-                                                  },
-                                                  data: orders
-                                                      .where(
-                                                        (element) =>
-                                                            element.rider ==
-                                                                null &&
-                                                            element.status ==
-                                                                "new",
-                                                      )
-                                                      .toList()[index],
-                                                  modal: true,
-                                                );
-                                              },
-                                              separatorBuilder:
-                                                  (context, index) =>
-                                                      const SizedBox(
-                                                        height: 10,
-                                                      ),
-                                              itemCount: orders
-                                                  .where(
-                                                    (element) =>
-                                                        element.rider == null &&
-                                                        element.status == "new",
-                                                  )
-                                                  .length),
-                                        ),
-                              loading
-                                  ? const SpinKitFadingCircle(
-                                      color: accentColor,
-                                    )
-                                  : orders
-                                          .where(
-                                            (element) =>
-                                                element.rider != null &&
-                                                element.status == "processing",
-                                          )
-                                          .isEmpty
-                                      ? Center(
-                                          child: SvgPicture.string(nodatafound),
-                                        )
-                                      : Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 25,
-                                          ),
-                                          child: ListView.separated(
-                                            physics:
-                                                const BouncingScrollPhysics(),
-                                            scrollDirection: Axis.vertical,
-                                            itemBuilder: (context, index) {
-                                              final order = orders
-                                                  .where(
-                                                    (element) =>
-                                                        element.rider != null &&
-                                                        element.status ==
-                                                            "processing",
-                                                  )
-                                                  .toList()[index];
-                                              final isSelected =
-                                                  selectedStates[order.id] ==
-                                                          null
-                                                      ? false
-                                                      : true;
-                                              return OrderCard(
-                                                isSelected: isSelected,
-                                                onSelectionChanged:
-                                                    (isSelected) {
-                                                  onSelectionChanged(
-                                                    order.id,
-                                                    isSelected,
-                                                  );
-                                                },
-                                                data: orders
-                                                    .where(
-                                                      (element) =>
-                                                          element.rider !=
-                                                              null &&
-                                                          element.status ==
-                                                              "processing",
-                                                    )
-                                                    .toList()[index],
-                                                modal: true,
-                                              );
-                                            },
-                                            separatorBuilder:
-                                                (context, index) =>
-                                                    const SizedBox(
-                                              height: 10,
-                                            ),
-                                            itemCount: orders
-                                                .where((element) {
-                                                  return element.rider !=
-                                                          null &&
-                                                      element.status ==
-                                                          "processing";
-                                                })
-                                                .toList()
-                                                .length,
-                                          ),
-                                        ),
-                              loading
-                                  ? const SpinKitFadingCircle(
-                                      color: accentColor,
-                                    )
-                                  : orders
-                                          .where(
-                                            (element) =>
-                                                element.rider != null &&
-                                                element.status == "delivered",
-                                          )
-                                          .isEmpty
-                                      ? Center(
-                                          child: SvgPicture.string(nodatafound),
-                                        )
-                                      : Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 25,
-                                          ),
-                                          child: ListView.separated(
-                                            physics:
-                                                const BouncingScrollPhysics(),
-                                            scrollDirection: Axis.vertical,
-                                            itemBuilder: (context, index) {
-                                              final order = orders
-                                                  .where(
-                                                    (element) =>
-                                                        element.rider != null &&
-                                                        element.status ==
-                                                            "delivered",
-                                                  )
-                                                  .toList()[index];
-                                              final isSelected =
-                                                  selectedStates[order.id] ==
-                                                          null
-                                                      ? false
-                                                      : true;
-                                              return OrderCard(
-                                                isSelected: isSelected,
-                                                data: order,
-                                                modal: true,
-                                                onSelectionChanged:
-                                                    (isSelected) {
-                                                  onSelectionChanged(
-                                                    order.id,
-                                                    isSelected,
-                                                  );
-                                                },
-                                              );
-                                            },
-                                            separatorBuilder:
-                                                (context, index) =>
-                                                    const SizedBox(
-                                              height: 10,
-                                            ),
-                                            itemCount: orders
-                                                .where((element) {
-                                                  return element.rider !=
-                                                          null &&
-                                                      element.status ==
-                                                          "delivered";
-                                                })
-                                                .toList()
-                                                .length,
-                                          ),
-                                        ),
-                            ],
-                          ),
-                        )
-                      ],
+            : SafeArea(
+                child: Column(
+                  children: [
+                    const SizedBox(
+                      height: 10,
                     ),
-                  ),
+                    Expanded(
+                      child: SizedBox(
+                        child: TabBarView(
+                          controller: _tabController,
+                          children: [
+                            _buildTabWithRefreshIndicator(
+                              orders
+                                  .where((element) =>
+                                      element.rider == null &&
+                                      element.status == "new")
+                                  .toList(),
+                            ),
+                            _buildTabWithRefreshIndicator(
+                              orders
+                                  .where((element) =>
+                                      element.rider != null &&
+                                      element.status == "processing")
+                                  .toList(),
+                            ),
+                            _buildTabWithRefreshIndicator(
+                              orders
+                                  .where((element) =>
+                                      element.rider != null &&
+                                      element.status == "delivered")
+                                  .toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
       ),

@@ -7,13 +7,13 @@ import 'package:instaport_rider/models/address_model.dart';
 import 'package:instaport_rider/models/direction_response_model.dart';
 import 'package:instaport_rider/models/location_model.dart';
 
-const String key = "AIzaSyCQb159dbqJypdIO1a1o0v_mNgM5eFqVAo";
+const String key = "AIzaSyDz11oR0kxuuNQFW9RqQYJ5NnOsfi_OGZ4";
 
 class LocationService {
   AppController appController = Get.put(AppController());
   Future<double> fetchDistance(LatLng src, LatLng dest) async {
     String endpoint =
-        'https://maps.googleapis.com/maps/api/distancematrix/json?destinations=${dest.latitude},${dest.longitude}&origins=${src.latitude},${src.longitude}&key=AIzaSyCQb159dbqJypdIO1a1o0v_mNgM5eFqVAo';
+        'https://maps.googleapis.com/maps/api/distancematrix/json?destinations=${dest.latitude},${dest.longitude}&origins=${src.latitude},${src.longitude}&key=$key';
     final response = await http.get(Uri.parse(endpoint));
 
     if (response.statusCode == 200) {
@@ -29,7 +29,7 @@ class LocationService {
     try {
       if (droplocations.isEmpty) {
         endpoint =
-            'https://maps.googleapis.com/maps/api/directions/json?origin=$srclat,$srclng&destination=$destlat,$destlng&key=AIzaSyCQb159dbqJypdIO1a1o0v_mNgM5eFqVAo';
+            'https://maps.googleapis.com/maps/api/directions/json?origin=$srclat,$srclng&destination=$destlat,$destlng&key=$key';
       } else {
         final List<String> waypoints = [];
         waypoints.add('$destlat,$destlng');
@@ -40,7 +40,7 @@ class LocationService {
         waypoints.removeLast();
         var waypointsString = waypoints.join('|');
         endpoint =
-            'https://maps.googleapis.com/maps/api/directions/json?origin=$srclat,$srclng&destination=${droplocations.last.latitude},${droplocations.last.longitude}&waypoints=optimize:true|$waypointsString&key=AIzaSyCQb159dbqJypdIO1a1o0v_mNgM5eFqVAo';
+            'https://maps.googleapis.com/maps/api/directions/json?origin=$srclat,$srclng&destination=${droplocations.last.latitude},${droplocations.last.longitude}&waypoints=optimize:true|$waypointsString&key=$key';
       }
 
       var response = await http.get(Uri.parse(endpoint));

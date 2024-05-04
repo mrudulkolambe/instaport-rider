@@ -1,12 +1,12 @@
 import 'package:intl/intl.dart';
 
 String readTimestamp(int timestamp) {
-  var format = DateFormat('d-MMM-yyyy, HH:mm');
+  var format = DateFormat('d-MMM-yyyy, hh:mm a');
   var date = DateTime.fromMicrosecondsSinceEpoch(timestamp * 1000);
   return format.format(date);
 }
 String readTimestampAsTime(int timestamp) {
-  var format = DateFormat('HH:mm');
+  var format = DateFormat('hh:mm a');
   var date = DateTime.fromMicrosecondsSinceEpoch(timestamp * 1000);
   return format.format(date);
 }

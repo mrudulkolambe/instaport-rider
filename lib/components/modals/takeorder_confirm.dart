@@ -1,12 +1,15 @@
 import 'dart:convert';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:instaport_rider/constants/colors.dart';
 import 'package:http/http.dart' as http;
 import 'package:instaport_rider/controllers/user.dart';
+import 'package:instaport_rider/firebase_messaging/firebase_messaging.dart';
 import 'package:instaport_rider/main.dart';
 import 'package:instaport_rider/models/order_model.dart';
 import 'package:instaport_rider/models/rider_model.dart';
@@ -41,6 +44,7 @@ class _TakeOrderConfirmState extends State<TakeOrderConfirm> {
         Get.back();
         if (data.error) {
         } else {
+          FirebaseMessagingAPI().localNotificationsApp(RemoteNotification(title: "Order Started", body: "Order #${widget.data.id.substring(18)} has been taken! \nConfirm the order by calling the customer"));
           Get.to(
             () => TrackOrder(
               data: widget.data,

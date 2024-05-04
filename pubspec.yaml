@@ -59,6 +59,9 @@ dependencies:
   mask_text_input_formatter: ^2.9.0
   fluttertoast: ^8.2.4
   image: ^4.1.7
+  flutter_inappwebview: ^5.8.0
+  firebase_messaging: ^14.9.1
+  flutter_launcher_icons: ^0.13.1
 
 dev_dependencies:
   flutter_test:
@@ -71,6 +74,10 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^2.0.0
 
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/main/main.png"
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 

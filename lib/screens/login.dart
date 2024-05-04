@@ -8,10 +8,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:instaport_rider/components/label.dart';
 import 'package:instaport_rider/constants/colors.dart';
 import 'package:instaport_rider/controllers/user.dart';
+import 'package:instaport_rider/firebase_messaging/firebase_messaging.dart';
 import 'package:instaport_rider/main.dart';
 import 'package:instaport_rider/models/rider_model.dart';
 import 'package:instaport_rider/screens/create_account.dart';
 import 'package:http/http.dart' as http;
+import 'package:instaport_rider/screens/forget_password.dart';
 import 'package:instaport_rider/screens/home.dart';
 import 'package:instaport_rider/screens/inreview.dart';
 import 'package:instaport_rider/services/tracking_service.dart';
@@ -49,13 +51,9 @@ class _LoginState extends State<Login> {
       final riderData = await http.get(Uri.parse('$apiUrl/rider/'),
           headers: {'Authorization': 'Bearer $token'});
       final userData = RiderDataResponse.fromJson(jsonDecode(riderData.body));
-      if (userData.rider.approve) {
-        riderController.updateRider(userData.rider);
-        trackingService.setUser(userData.rider.id);
-        Get.to(() => const Home());
-      } else {
-        Get.to(() => const InReview());
-      }
+      riderController.updateRider(userData.rider);
+      trackingService.setUser(userData.rider.id);
+      Get.to(() => const SplashScreen());
     } catch (error) {
       print('Error creating entry: $error');
       // Handle errors or provide user feedback
@@ -120,8 +118,8 @@ class _LoginState extends State<Login> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
-                              borderSide:
-                                  const BorderSide(width: 2, color: accentColor),
+                              borderSide: const BorderSide(
+                                  width: 2, color: accentColor),
                             ),
                             contentPadding: const EdgeInsets.symmetric(
                               vertical: 15,
@@ -192,12 +190,15 @@ class _LoginState extends State<Login> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            Text(
-                              "Forget Password?",
-                              style: GoogleFonts.poppins(
-                                  color: Colors.black,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500),
+                            GestureDetector(
+                              onTap: () => Get.to(() => const ForgetPassword()),
+                              child: Text(
+                                "Forget Password?",
+                                style: GoogleFonts.poppins(
+                                    color: Colors.black,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500),
+                              ),
                             ),
                           ],
                         ),
@@ -214,6 +215,9 @@ class _LoginState extends State<Login> {
                                       setState(() {
                                         loading = true;
                                       });
+                                      String? fcmtoken =
+                                          await FirebaseMessagingAPI()
+                                              .initNotifications();
                                       const String url = '$apiUrl/rider/signin';
                                       try {
                                         final response = await http.post(
@@ -223,7 +227,9 @@ class _LoginState extends State<Login> {
                                           },
                                           body: jsonEncode({
                                             'mobileno': _phoneController.text,
-                                            'password': _passwordController.text,
+                                            'password':
+                                                _passwordController.text,
+                                            'fcmtoken': fcmtoken ?? ""
                                           }),
                                         );
                                         final data = SignInResponse.fromJson(
@@ -237,7 +243,8 @@ class _LoginState extends State<Login> {
                                         }
                                         // ignore: empty_catches
                                       } catch (error) {
-                                        ToastManager.showToast(error.toString());
+                                        ToastManager.showToast(
+                                            error.toString());
                                       }
                                       setState(() {
                                         loading = false;

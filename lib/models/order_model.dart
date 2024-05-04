@@ -107,6 +107,7 @@ class Orders {
   String delivery_type;
   String parcel_weight;
   String phone_number;
+  List<double> distances;
   bool notify_sms;
   bool courier_bag;
   String vehicle;
@@ -125,6 +126,7 @@ class Orders {
   List<OrderStatus> orderStatus;
 
   Orders({
+    required this.distances,
     required this.pickup,
     required this.drop,
     required this.id,
@@ -153,7 +155,7 @@ class Orders {
   factory Orders.fromJson(dynamic json) {
 // Future<void> fetchDistance(double lat, double lng) async {
 //     String endpoint =
-//         'https://maps.googleapis.com/maps/api/distancematrix/json?destinations=${lat},${lng}&origins=${appController.currentposition.value.target.latitude},${appController.currentposition.value.target.longitude}&key=AIzaSyCQb159dbqJypdIO1a1o0v_mNgM5eFqVAo';
+//         'https://maps.googleapis.com/maps/api/distancematrix/json?destinations=${lat},${lng}&origins=${appController.currentposition.value.target.latitude},${appController.currentposition.value.target.longitude}&key=AIzaSyDz11oR0kxuuNQFW9RqQYJ5NnOsfi_OGZ4';
 //     final response = await http.get(Uri.parse(endpoint));
 
 //     if (response.statusCode == 200) {
@@ -166,6 +168,9 @@ class Orders {
     final drop = Address.fromJson(json['drop']);
     final orderStatus = List.from(json["orderStatus"]).map((e) {
       return OrderStatus.fromJson(e);
+    }).toList();
+    final distances = List.from(json["distances"]).map((e) {
+      return e as double;
     }).toList();
     final droplocations = List.from(json["droplocations"]).map((e) {
       return Address.fromJson(e);
@@ -192,6 +197,7 @@ class Orders {
         : Address.fromJson(json['payment_address']);
 
     return Orders(
+      distances: distances,
       pickup: pickup,
       drop: drop,
       id: id,

@@ -39,7 +39,7 @@ class TrackingService extends GetxService {
       BackgroundLocation.setAndroidNotification(
         title: 'Background Location',
         message: 'Location is being tracked in the background',
-        icon: '@mipmap/ic_launcher',
+        icon: '@drawable/ic_launcher',
       );
       BackgroundLocation.setAndroidConfiguration(
         5000,

@@ -25,15 +25,9 @@ class DefaultFirebaseOptions {
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -47,28 +41,47 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyA0flwMGejg7rrLkGqs3D7qonB8H9E8Uxc',
-    appId: '1:62094269732:web:a58b2a941f9af5f338a7b1',
-    messagingSenderId: '62094269732',
-    projectId: 'instaport-application',
-    authDomain: 'instaport-application.firebaseapp.com',
-    storageBucket: 'instaport-application.appspot.com',
+    apiKey: 'AIzaSyDRgkAAZ2SIvYC-EPHw7DDDEFUsJDbScKA',
+    appId: '1:209395485323:web:56f1a35285e09bdbf1a28e',
+    messagingSenderId: '209395485323',
+    projectId: 'instaport-main',
+    authDomain: 'instaport-main.firebaseapp.com',
+    storageBucket: 'instaport-main.appspot.com',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAp6a0NJIJFdO6e8BXS-eypMnC0XpDMaCE',
-    appId: '1:62094269732:android:fa4b26a3e6f0a54a38a7b1',
-    messagingSenderId: '62094269732',
-    projectId: 'instaport-application',
-    storageBucket: 'instaport-application.appspot.com',
+    apiKey: 'AIzaSyAcyS-03eWA8hCJ6ZMBm-Q_jbW7ymVKrR0',
+    appId: '1:209395485323:android:89e8a330b7d3ede4f1a28e',
+    messagingSenderId: '209395485323',
+    projectId: 'instaport-main',
+    storageBucket: 'instaport-main.appspot.com',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyApi9B0kXUWpzSFHcp2z182KunJ0bJZugU',
-    appId: '1:62094269732:ios:6b89bb6caeecc74e38a7b1',
-    messagingSenderId: '62094269732',
-    projectId: 'instaport-application',
-    storageBucket: 'instaport-application.appspot.com',
-    iosBundleId: 'com.example.instaportRider',
+    apiKey: 'AIzaSyB-NjrNn9b_MRQYXVq6eKHqgoS6wK2JIW0',
+    appId: '1:209395485323:ios:1b67a255b0fffb85f1a28e',
+    messagingSenderId: '209395485323',
+    projectId: 'instaport-main',
+    storageBucket: 'instaport-main.appspot.com',
+    iosBundleId: 'com.instaport.rider',
   );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyB-NjrNn9b_MRQYXVq6eKHqgoS6wK2JIW0',
+    appId: '1:209395485323:ios:a2e547c2db64dcb9f1a28e',
+    messagingSenderId: '209395485323',
+    projectId: 'instaport-main',
+    storageBucket: 'instaport-main.appspot.com',
+    iosBundleId: 'com.instaport.rider',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyDRgkAAZ2SIvYC-EPHw7DDDEFUsJDbScKA',
+    appId: '1:209395485323:web:aebe56da0da5a5cef1a28e',
+    messagingSenderId: '209395485323',
+    projectId: 'instaport-main',
+    authDomain: 'instaport-main.firebaseapp.com',
+    storageBucket: 'instaport-main.appspot.com',
+  );
+
 }

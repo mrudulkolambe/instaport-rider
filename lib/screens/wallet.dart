@@ -17,6 +17,7 @@ import 'package:http/http.dart' as http;
 import 'package:instaport_rider/main.dart';
 import 'package:instaport_rider/models/transaction_model.dart';
 import 'package:instaport_rider/models/rider_model.dart';
+import 'package:instaport_rider/screens/billdesk.dart';
 import 'package:instaport_rider/utils/toast_manager.dart';
 
 class Wallet extends StatefulWidget {
@@ -74,6 +75,16 @@ class _WalletState extends State<Wallet> {
     }
   }
 
+  void payMoney() async {
+    final token = await _storage.read("token");
+    print("https://instaport-transactions.vercel.app/rider-dues.html?token=$token&amount=${-riderController.rider.wallet_amount}");
+    Get.to(
+      () => BillDeskPayment(
+        url: "https://instaport-transactions.vercel.app/rider-dues.html?token=$token&amount=${-riderController.rider.wallet_amount}",
+      ),
+    );
+  }
+
   void requestMoney() async {
     try {
       final token = await _storage.read("token");
@@ -98,7 +109,7 @@ class _WalletState extends State<Wallet> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
+      appBar: AppBar(
         toolbarHeight: 60,
         surfaceTintColor: Colors.white,
         automaticallyImplyLeading: false,
@@ -180,42 +191,85 @@ class _WalletState extends State<Wallet> {
                                 const SizedBox(
                                   height: 20,
                                 ),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    GestureDetector(
-                                      onTap: requestMoney,
-                                      child: Container(
-                                        width: MediaQuery.of(context)
-                                                .size
-                                                .width -
-                                            50 -
-                                            45,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                        ),
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 30,
-                                            vertical: 10,
-                                          ),
-                                          child: Center(
-                                            child: Text(
-                                              "Request Money",
-                                              style: GoogleFonts.poppins(
-                                                color: Colors.black,
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 14,
+                                ridercontroller.rider.wallet_amount < 0
+                                    ? Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          GestureDetector(
+                                            onTap: payMoney,
+                                            child: Container(
+                                              width: MediaQuery.of(context)
+                                                      .size
+                                                      .width -
+                                                  50 -
+                                                  45,
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                              ),
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 30,
+                                                  vertical: 10,
+                                                ),
+                                                child: Center(
+                                                  child: Text(
+                                                    "Pay",
+                                                    style: GoogleFonts.poppins(
+                                                      color: Colors.black,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      fontSize: 14,
+                                                    ),
+                                                  ),
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                  ],
-                                )
+                                          )
+                                        ],
+                                      )
+                                    : Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          GestureDetector(
+                                            onTap: requestMoney,
+                                            child: Container(
+                                              width: MediaQuery.of(context)
+                                                      .size
+                                                      .width -
+                                                  50 -
+                                                  45,
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                              ),
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 30,
+                                                  vertical: 10,
+                                                ),
+                                                child: Center(
+                                                  child: Text(
+                                                    "Request Money",
+                                                    style: GoogleFonts.poppins(
+                                                      color: Colors.black,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      fontSize: 14,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                        ],
+                                      )
                               ],
                             ),
                           ],

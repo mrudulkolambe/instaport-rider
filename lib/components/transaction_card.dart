@@ -55,8 +55,8 @@ class _TransactionCardState extends State<TransactionCard> {
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: <Widget>[
                     Container(
-                      height: 60,
-                      width: 60,
+                      height: 50,
+                      width: 50,
                       decoration: BoxDecoration(
                           color: accentColor.withOpacity(0.20),
                           borderRadius: BorderRadius.circular(10)),
