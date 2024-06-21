@@ -40,9 +40,8 @@ class LocationData {
   double latitude;
   double longitude;
 
-  LocationData(
-      {required this.latitude, required this.longitude});
-  
+  LocationData({required this.latitude, required this.longitude});
+
   factory LocationData.fromJson(Map<String, dynamic> json) {
     return LocationData(
       latitude: json['lat'] + 0.0 as double,
@@ -51,17 +50,14 @@ class LocationData {
   }
 }
 
-class RealtimeOrder{
+class RealtimeOrder {
   String modified;
-  OnlyDetails order;
 
-    RealtimeOrder(
-      {required this.modified, required this.order});
-  
+  RealtimeOrder({required this.modified});
+
   factory RealtimeOrder.fromJson(Map<String, dynamic> json) {
     return RealtimeOrder(
       modified: json['modified'] as String,
-      order: OnlyDetails.fromJson(json["order"]),
     );
   }
 }

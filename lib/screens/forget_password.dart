@@ -81,7 +81,7 @@ class _ForgetPasswordState extends State<ForgetPassword> {
     });
     try {
       var headers = {'Content-Type': 'application/json'};
-      var request = http.Request('POST', Uri.parse('$apiUrl/rider/get-validity'));
+      var request = http.Request('POST', Uri.parse('$apiUrl/rider/get-validity-actual'));
       request.body = json.encode({
         "mobileno": phoneNumberController.text,
       });

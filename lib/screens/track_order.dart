@@ -946,14 +946,14 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
       );
       droplocationslists = data;
     });
-    if (orderData.order.rider != null &&
-        orderData.order.status != "delivered") {
+    if (orderData.order.status != "delivered") {
       _databaseListener = ref
           .child('orders/${widget.data.id}')
           .onValue
           .listen((DatabaseEvent event) async {
         final data = event.snapshot.value;
         final dynamic snapshotValue = json.encode(data);
+        print(jsonDecode(snapshotValue));
         if (snapshotValue != null) {
           while (Get.isDialogOpen! && !Get.isSnackbarOpen) {
             Get.back();
@@ -991,7 +991,8 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
             droplocationslists = modData;
           });
           if (data.modified == "data") {
-            FirebaseMessagingAPI().localNotificationsApp(RemoteNotification(title: "Order Updated", body: "Order #${widget.data.id.substring(18)} has been updated by the customer!"));
+            print(data.modified);
+            // FirebaseMessagingAPI().localNotificationsApp(RemoteNotification(title: "Order Updated", body: "Order #${widget.data.id.substring(18)} has been updated by the customer!"));
             Get.dialog(
               WillPopScope(
                 onWillPop: () async {
@@ -1264,7 +1265,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
               barrierDismissible: false,
             );
           } else if (data.modified == "cancel") {
-            FirebaseMessagingAPI().localNotificationsApp(RemoteNotification(title: "Order Cancelled", body: "Order #${widget.data.id.substring(18)} has been cancelled by the customer!"));
+            // FirebaseMessagingAPI().localNotificationsApp(RemoteNotification(title: "Order Cancelled", body: "Order #${widget.data.id.substring(18)} has been cancelled by the customer!"));
             Get.dialog(
               Dialog(
                 backgroundColor: Colors.white,
@@ -1331,9 +1332,9 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
               barrierDismissible: false,
             );
           }
-          setState(() {
-            realtime = data.order;
-          });
+          // setState(() {
+          //   realtime = data.order;
+          // });
         }
       });
     } else {

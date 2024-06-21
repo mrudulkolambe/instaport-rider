@@ -170,7 +170,7 @@ class Orders {
       return OrderStatus.fromJson(e);
     }).toList();
     final distances = List.from(json["distances"]).map((e) {
-      return e as double;
+      return e  + 0.0 as double;
     }).toList();
     final droplocations = List.from(json["droplocations"]).map((e) {
       return Address.fromJson(e);
