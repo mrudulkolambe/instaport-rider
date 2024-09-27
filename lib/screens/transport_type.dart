@@ -17,10 +17,12 @@ import 'package:instaport_rider/main.dart';
 import 'package:http/http.dart' as http;
 import 'package:instaport_rider/models/cloudinary_upload.dart';
 import 'package:instaport_rider/models/rider_model.dart';
+import 'package:instaport_rider/models/upload.dart';
 import 'package:instaport_rider/utils/image_modifier.dart';
 import 'package:instaport_rider/utils/toast_manager.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:file_picker/file_picker.dart';
 
 class TransportType extends StatefulWidget {
   const TransportType({super.key});
@@ -68,38 +70,42 @@ class _TransportTypeState extends State<TransportType> {
     }
   }
 
-  Future<void> uploadToCloudinary(File imageFile) async {
-    final url =
-        Uri.parse('https://api.cloudinary.com/v1_1/dwd2fznsk/image/upload');
-    final request = http.MultipartRequest('POST', url)
-      ..fields['upload_preset'] = 'zkmws48n'
-      ..files.add(await http.MultipartFile.fromPath('file', imageFile.path));
-    final response = await request.send();
+  Future<SingleUploadResponse?> uploadFile(File file, String path) async {
+    var request = http.MultipartRequest(
+        'POST', Uri.parse("https://instaportdelivery.in/upload"));
+    request.fields.addAll({'path': path});
+    request.files.add(await http.MultipartFile.fromPath('files', file.path));
+    http.StreamedResponse response = await request.send();
     if (response.statusCode == 200) {
-      final responseData = await response.stream.toBytes();
-      final responseString = String.fromCharCodes(responseData);
-      final jsonMap = jsonDecode(responseString);
-      var data = CloudinaryUpload.fromJson(jsonMap);
-      setState(() {
-        drivinglicense = data.secureUrl;
-      });
-      handleSave();
+      final result = await response.stream.bytesToString();
+      final data = SingleUploadResponse.fromJson(jsonDecode(result));
+      return data;
     } else {
-      print(response.statusCode);
+      return null;
     }
   }
 
-  Future<void> getImage() async {
+  Future<void> pickFile() async {
     bool permissionGranted = await requestGalleryPermission();
     if (permissionGranted) {
-      final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-      if (image != null) {
-        File pickedImageFile = File(image.path);
-        int sizeInBytes = await pickedImageFile.length();
+      // Allow user to pick images and PDFs
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'], // Images and PDF
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        File pickedFile = File(result.files.single.path!);
+        int sizeInBytes = await pickedFile.length();
         double sizeInMB = sizeInBytes / (1024 * 1024);
+
+        // Limit file size to 10MB
         if (sizeInMB <= 10.0) {
-          uploadToCloudinary(pickedImageFile);
+          // Check file extension and handle accordingly
+          String? fileExtension = result.files.single.extension;
+          uploadFile(
+            pickedFile, "driving_license"
+          );
         } else {
           ToastManager.showToast("Size should be less than 10MB");
         }
@@ -113,9 +119,8 @@ class _TransportTypeState extends State<TransportType> {
         loading = false;
       });
       openAppSettings();
-      ToastManager.showToast('Permission to access gallery denied');
+      ToastManager.showToast('Permission to access files denied');
     }
-    return;
   }
 
   void handlePrefetch() async {
@@ -130,8 +135,8 @@ class _TransportTypeState extends State<TransportType> {
     );
     setState(() {
       vehicle = rider.vehicle == null ? "scooty" : rider.vehicle!;
-      drivinglicense =
-          rider.drivinglicense == null ? "" : rider.drivinglicense!;
+      // drivinglicense =
+      //     rider.drivinglicense.url == null ? "" : rider.drivinglicense!;
     });
   }
 
@@ -320,7 +325,7 @@ class _TransportTypeState extends State<TransportType> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             GestureDetector(
-                              onTap: getImage,
+                              onTap: pickFile,
                               child: Text(
                                 "Upload Driving License",
                                 style: GoogleFonts.poppins(

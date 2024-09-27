@@ -24,6 +24,7 @@ import 'package:instaport_rider/models/cloudinary_upload.dart';
 import 'package:instaport_rider/models/order_model.dart';
 import 'package:instaport_rider/models/places_model.dart';
 import 'package:instaport_rider/models/price_model.dart';
+import 'package:instaport_rider/models/upload.dart';
 import 'package:instaport_rider/screens/home.dart';
 import 'package:instaport_rider/services/location_service.dart';
 import 'package:instaport_rider/utils/timeformatter.dart';
@@ -76,9 +77,10 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
     } else {
       final List<LatLng> dropArr = [];
       dropArr.add(dest);
-      if(droplocations.length > 1){
+      if (droplocations.length > 1) {
         for (var i = 0; i < droplocations.length - 2; i++) {
-          dropArr.add(LatLng(droplocations[i].latitude, droplocations[i].longitude)); 
+          dropArr.add(
+              LatLng(droplocations[i].latitude, droplocations[i].longitude));
         }
       }
       final String waypointsString = dropArr
@@ -246,9 +248,9 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
         }
         var orderData = MessageResponse.fromJson(jsonDecode(data.body));
         FirebaseMessagingAPI().localNotificationsApp(RemoteNotification(
-          title: "Order Withdrawn",
-          body: "Order #${order!.id.substring(18)} has been successfully withdrawn!"
-        ));
+            title: "Order Withdrawn",
+            body:
+                "Order #${order!.id.substring(18)} has been successfully withdrawn!"));
         Get.to(() => const Home());
         ToastManager.showToast(orderData.message);
       } else {
@@ -397,7 +399,9 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
         int sizeInBytes = await pickedImageFile.length();
         double sizeInMB = sizeInBytes / (1024 * 1024);
         if (sizeInMB <= 10.0) {
-          return await uploadToCloudinary(pickedImageFile);
+          final imgUrl = await uploadSingleFile(
+              pickedImageFile, "${widget.data.id}/track/");
+          return imgUrl as String;
         } else {
           ToastManager.showToast("Size should be less than 10MB");
         }
@@ -458,24 +462,17 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
     );
   }
 
-  Future<String> uploadToCloudinary(File imageFile) async {
-    displayUploading();
-    final url =
-        Uri.parse('https://api.cloudinary.com/v1_1/dwd2fznsk/image/upload');
-    final request = http.MultipartRequest('POST', url)
-      ..fields['upload_preset'] = 'zkmws48n'
-      ..files.add(await http.MultipartFile.fromPath('file', imageFile.path));
-    final response = await request.send();
+  Future<String?> uploadSingleFile(File file, String path) async {
+    var request = http.MultipartRequest('POST', Uri.parse("$apiUrl/upload"));
+    request.fields.addAll({'path': path});
+    request.files.add(await http.MultipartFile.fromPath('files', file.path));
+    http.StreamedResponse response = await request.send();
     if (response.statusCode == 200) {
-      final responseData = await response.stream.toBytes();
-      final responseString = String.fromCharCodes(responseData);
-      final jsonMap = jsonDecode(responseString);
-      var data = CloudinaryUpload.fromJson(jsonMap);
-      Get.back();
-      return data.secureUrl;
-      // handleSave();
+      final result = await response.stream.bytesToString();
+      final data = SingleUploadResponse.fromJson(jsonDecode(result));
+      return data.media.url;
     } else {
-      throw "Something went wrong";
+      return null;
     }
   }
 
@@ -498,11 +495,10 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
       if (response.statusCode == 200) {
         var json = await response.stream.bytesToString();
         var updatedOrderData = OrderResponse.fromJson(jsonDecode(json));
-        if(_counter < 0){
+        if (_counter < 0) {
           FirebaseMessagingAPI().localNotificationsApp(RemoteNotification(
-            title: "Order Completed",
-            body: "The order was not delivered on time."
-          ));
+              title: "Order Completed",
+              body: "The order was not delivered on time."));
         }
         setState(() {
           order = updatedOrderData.order;

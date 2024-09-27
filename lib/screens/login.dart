@@ -36,7 +36,7 @@ class _LoginState extends State<Login> {
   bool loading = false;
   bool show = false;
   final RiderController riderController = Get.put(RiderController());
-  final TrackingService trackingService = Get.find<TrackingService>();
+  // final TrackingService trackingService = Get.put(TrackingService());
   late FToast ftoast;
 
   @override
@@ -52,7 +52,7 @@ class _LoginState extends State<Login> {
           headers: {'Authorization': 'Bearer $token'});
       final userData = RiderDataResponse.fromJson(jsonDecode(riderData.body));
       riderController.updateRider(userData.rider);
-      trackingService.setUser(userData.rider.id);
+      // trackingService.setUser(userData.rider.id);
       Get.to(() => const SplashScreen());
     } catch (error) {
       print('Error creating entry: $error');
@@ -209,9 +209,10 @@ class _LoginState extends State<Login> {
                           children: [
                             Expanded(
                                 child: GestureDetector(
-                              onTap: loading
-                                  ? null
-                                  : () async {
+                              onTap: () async {
+                              // onTap: loading
+                              //     ? null
+                              //     : () async {
                                       setState(() {
                                         loading = true;
                                       });
@@ -245,10 +246,10 @@ class _LoginState extends State<Login> {
                                       } catch (error) {
                                         ToastManager.showToast(
                                             error.toString());
+                                        setState(() {
+                                          loading = false;
+                                        });
                                       }
-                                      setState(() {
-                                        loading = false;
-                                      });
                                     },
                               child: Container(
                                 height: 55,

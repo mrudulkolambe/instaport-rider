@@ -30,7 +30,7 @@ class _CreateAccountState extends State<CreateAccount> {
   final TextEditingController _phonecontroller = TextEditingController();
   final TextEditingController _passwordcontroller = TextEditingController();
   final RiderController riderController = Get.put(RiderController());
-  final TrackingService trackingService = Get.find<TrackingService>();
+  // final TrackingService trackingService = Get.put(TrackingService());
   bool show = false;
   GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   void writeData(String token) async {

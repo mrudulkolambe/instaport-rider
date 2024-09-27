@@ -59,8 +59,8 @@ class _ProofOfAddressState extends State<ProofOfAddress> {
       _pancontroller.text = "";
     } else {
       _addresscontroller.text = riderController.rider.address!;
-      _aadharcontroller.text = riderController.rider.aadharcard!;
-      _pancontroller.text = riderController.rider.pancard!;
+      // _aadharcontroller.text = riderController.rider.aadharcard!;
+      // _pancontroller.text = riderController.rider.pancard!;
     }
   }
 

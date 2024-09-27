@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:instaport_rider/constants/colors.dart';
@@ -19,7 +20,6 @@ import 'package:get_storage/get_storage.dart';
 import 'package:instaport_rider/screens/verification.dart';
 import 'package:instaport_rider/services/tracking_service.dart';
 import 'package:instaport_rider/utils/toast_manager.dart';
-import 'package:map_location_picker/google_map_location_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_core/firebase_core.dart';
@@ -31,11 +31,12 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  // final trackingService = Get.put(TrackingService());
   runApp(const MyApp());
 }
 
 const apiUrl = "https://instaport-backend-main.vercel.app";
-// const apiUrl = "http://192.168.0.103:1000";
+// const apiUrl = "http://192.168.0.101:1000";
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -49,9 +50,9 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: accentColor),
         useMaterial3: true,
       ),
-      initialBinding: BindingsBuilder(() {
-        Get.put<TrackingService>(TrackingService(), permanent: true);
-      }),
+      // initialBinding: BindingsBuilder(() {
+      //   Get.put<TrackingService>(TrackingService(), permanent: true);
+      // }),
       home: const SplashScreen(),
     );
   }
@@ -67,7 +68,7 @@ class _SplashScreenState extends State<SplashScreen> {
   AppController appController = Get.put(AppController());
   RiderController riderController = Get.put(RiderController());
   PriceController priceController = Get.put(PriceController());
-
+  // final TrackingService trackingService = Get.put(TrackingService());
   void getPermissions() async {
     if (await Permission.location.serviceStatus.isEnabled) {
     } else {}
@@ -126,6 +127,67 @@ class _SplashScreenState extends State<SplashScreen> {
     priceController.updatePrice(data.priceManipulation);
   }
 
+  bool checkAadharAndPanStatus(List<Map<String, String>> documents) {
+    bool aadharApproved = false;
+    bool panApproved = false;
+    bool imageApproved = false;
+    List<String> pendingOrRejected = [];
+
+    // Loop through the list and check the status of Aadhaar and PAN
+    for (var document in documents) {
+      if (document['type'] == 'image') {
+        if (document['status'] == 'approve') {
+          imageApproved = true;
+        } else {
+          pendingOrRejected.add("Aadhaar is ${document['status']}");
+        }
+      }
+      if (document['type'] == 'aadhaar') {
+        if (document['status'] == 'approve') {
+          aadharApproved = true;
+        } else {
+          pendingOrRejected.add("Aadhaar is ${document['status']}");
+        }
+      }
+
+      if (document['type'] == 'pan') {
+        if (document['status'] == 'approve') {
+          panApproved = true;
+        } else {
+          pendingOrRejected.add("PAN is ${document['status']}");
+        }
+      }
+
+      if (document['type'] == 'driving') {
+        if (document['status'] != 'approve') {
+          pendingOrRejected.add("Driving License is ${document['status']}");
+        }
+      }
+
+      if (document['type'] == 'rc') {
+        if (document['status'] != 'approve') {
+          pendingOrRejected.add("RC Book is ${document['status']}");
+        }
+      }
+    }
+
+    // Construct the message with commas and "&" for clarity
+    if (pendingOrRejected.isNotEmpty) {
+      String message = pendingOrRejected.join(", ");
+      if (pendingOrRejected.length > 1) {
+        int lastCommaIndex = message.lastIndexOf(", ");
+        message =
+            message.replaceRange(lastCommaIndex, lastCommaIndex + 2, " & ");
+      }
+      print(message);
+    } else {
+      print("All documents are approved.");
+    }
+
+    // Return true if both Aadhaar and PAN are approved, otherwise false
+    return aadharApproved && panApproved && imageApproved;
+  }
+
   Future<void> _isAuthed() async {
     final token = await _storage.read("token");
     if (token.toString() == "" || token == null) {
@@ -135,11 +197,39 @@ class _SplashScreenState extends State<SplashScreen> {
         final data = await http.get(Uri.parse('$apiUrl/rider/'),
             headers: {'Authorization': 'Bearer $token'});
         final userData = RiderDataResponse.fromJson(jsonDecode(data.body));
-        print(!userData.rider.verified);
+        List<Map<String, String>> documents = [];
+        documents.add({
+          "type": "aadhaar",
+          "status": userData.rider.aadharcard!.status,
+          "reason": userData.rider.aadharcard!.reason!
+        });
+        documents.add({
+          "type": "pan",
+          "status": userData.rider.pancard!.status,
+          "reason": userData.rider.pancard!.reason!
+        });
+        documents.add({
+          "type": "driving",
+          "status": userData.rider.drivinglicense!.status,
+          "reason": userData.rider.drivinglicense!.reason!
+        });
+        documents.add({
+          "type": "rc",
+          "status": userData.rider.rc_book!.status,
+          "reason": userData.rider.rc_book!.reason!
+        });
+        documents.add({
+          "type": "image",
+          "status": userData.rider.image!.status,
+          "reason": userData.rider.image!.reason!
+        });
         if (!userData.rider.verified) {
           Get.to(() => const Verification());
-        } else if (!userData.rider.approve) {
-          Get.to(() => const InReview());
+        } else if (!userData.rider.approve ||
+            !checkAadharAndPanStatus(documents)) {
+          Get.to(() => InReview(
+                documents: documents,
+              ));
         } else if (userData.rider.approve &&
             userData.rider.status == "disabled") {
           Get.to(() => const DisabledScreen());
@@ -147,7 +237,7 @@ class _SplashScreenState extends State<SplashScreen> {
           if (userData.rider.token == token) {
             handleFetchPrice();
             riderController.updateRider(userData.rider);
-            trackingService.setUser(userData.rider.id);
+            // trackingService.setUser(userData.rider.id);
             Get.to(() => const Home());
           } else {
             _storage.remove("token");
@@ -155,13 +245,12 @@ class _SplashScreenState extends State<SplashScreen> {
           }
         }
       } catch (e) {
-        // _storage.remove("token");
-        // Get.to(() => const Login());
+        _storage.remove("token");
+        Get.to(() => const Login());
       }
     }
   }
 
-  final TrackingService trackingService = Get.find<TrackingService>();
   @override
   Widget build(BuildContext context) {
     return Scaffold(

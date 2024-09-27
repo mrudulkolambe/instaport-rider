@@ -93,7 +93,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
     );
     final userData = RiderDataResponse.fromJson(jsonDecode(riderData.body));
     riderController.updateRider(userData.rider);
-    if (riderController.rider.wallet_amount < 0) {
+    if (riderController.rider.isDue!) {
       ToastManager.showToast("Clear the dues! Only online orders are visible");
     }
     setState(() {

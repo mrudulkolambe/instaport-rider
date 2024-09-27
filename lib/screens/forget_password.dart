@@ -101,8 +101,7 @@ class _ForgetPasswordState extends State<ForgetPassword> {
               height: MediaQuery.of(context).size.height,
               child: InAppWebView(
                 initialUrlRequest: URLRequest(
-                  url: Uri.parse(
-                      "https://instaport-transactions.vercel.app/rider-password/index.html?phone=${phoneNumberController.text.replaceAll(" ", "")}"),
+                  url: WebUri("https://instaport-transactions.vercel.app/rider-password/index.html?phone=${phoneNumberController.text.replaceAll(" ", "")}")
                 ),
                 shouldOverrideUrlLoading: (controller, request) async {
                   return NavigationActionPolicy.ALLOW;

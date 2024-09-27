@@ -81,8 +81,7 @@ class _VerificationState extends State<Verification> {
                 height: MediaQuery.of(context).size.height,
                 child: InAppWebView(
                   initialUrlRequest: URLRequest(
-                    url: Uri.parse(
-                        "https://instaport-transactions.vercel.app/otp/index.html?phone=${userData.rider.mobileno.replaceAll(" ", "")}&token=$token"),
+                    url: WebUri("https://instaport-transactions.vercel.app/otp/index.html?phone=${userData.rider.mobileno.replaceAll(" ", "")}&token=$token"),
                   ),
                   shouldOverrideUrlLoading: (controller, request) async {
                     return NavigationActionPolicy.ALLOW;
@@ -131,7 +130,7 @@ class _VerificationState extends State<Verification> {
             barrierDismissible: false,
           );
         } else if (!userData.rider.approve) {
-          Get.to(() => const InReview());
+          Get.to(() => const InReview(documents: [],));
         } else if (userData.rider.approve &&
             userData.rider.status == "disabled") {
           Get.to(() => const DisabledScreen());

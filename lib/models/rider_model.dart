@@ -23,6 +23,33 @@ class SignInResponse {
   }
 }
 
+class RiderDocument {
+  String url;
+  String status;
+  String type;
+  String? reason;
+
+  RiderDocument({
+    required this.status,
+    required this.url,
+    required this.type,
+    this.reason,
+  });
+
+  factory RiderDocument.fromJson(dynamic json) {
+    final url = json["url"];
+    final status = json["status"];
+    final type = json["type"];
+    final reason = json["reason"] ?? "" as String;
+    return RiderDocument(
+      status: status,
+      url: url,
+      type: type,
+      reason: reason,
+    );
+  }
+}
+
 class Rider {
   String id;
   String fullname;
@@ -30,7 +57,8 @@ class Rider {
   String role;
   String age;
   String status;
-  String image;
+  String? reason;
+  RiderDocument? image;
   String token;
   double wallet_amount;
   double requestedAmount;
@@ -38,15 +66,17 @@ class Rider {
   ReferenceContact? referenceContact1;
   ReferenceContact? referenceContact2;
   String? address;
-  String? aadharcard;
-  String? pancard;
+  RiderDocument? aadharcard;
+  RiderDocument? pancard;
+  RiderDocument? rc_book;
+  RiderDocument? drivinglicense;
   String? vehicle;
   String? ifsc;
   String? accno;
   String? accname;
-  String? drivinglicense;
   List<String>? orders;
   bool verified;
+  bool? isDue;
 
   Rider({
     required this.id,
@@ -54,16 +84,17 @@ class Rider {
     required this.mobileno,
     required this.role,
     required this.age,
-    required this.image,
+    this.image,
     required this.token,
     required this.wallet_amount,
     required this.status,
     required this.approve,
     required this.verified,
+    this.reason,
     required this.requestedAmount,
     this.address,
-    this.aadharcard,
-    this.pancard,
+    required this.aadharcard,
+    required this.pancard,
     this.vehicle,
     this.ifsc,
     this.accname,
@@ -71,7 +102,9 @@ class Rider {
     this.referenceContact1,
     this.referenceContact2,
     this.drivinglicense,
+    this.rc_book,
     this.orders,
+    this.isDue,
   });
 
   factory Rider.fromJson(dynamic json) {
@@ -82,18 +115,32 @@ class Rider {
     final token = json['token'] as String;
     final verified = json["verified"] as bool;
     final approve = json['approve'] as bool;
+    final isDue = json['isDue'] as bool;
+    final reason = json['reason'] as String;
     final role = json['role'] as String;
     final age = json['age'] as String;
-    final image = json["image"] as String;
+    final image =
+        json["image"] == RiderDocument(status: "upload", url: "", type: "image")
+            ? null
+            : RiderDocument.fromJson(json["image"]);
     final wallet_amount = json["wallet_amount"] + 0.0 as double;
     final requestedAmount = json["requestedAmount"] + 0.0 as double;
     final address = json["address"];
-    final aadharcard = json["aadhar_number"];
-    final pancard = json["pan_number"];
+    final aadharcard = json["aadhar_number"] == null
+        ? null
+        : RiderDocument.fromJson(json["aadhar_number"]);
+    final pancard = json["pan_number"] == null
+        ? null
+        : RiderDocument.fromJson(json["pan_number"]);
+    final rcBook = json["rc_book"] == null
+        ? null
+        : RiderDocument.fromJson(json["rc_book"]);
     final accno = json["acc_no"];
     final accIFSC = json["acc_ifsc"];
     final accHolder = json["acc_holder"];
-    final drivinglicense = json["drivinglicense"];
+    final drivinglicense = json["drivinglicense"] == null
+        ? null
+        : RiderDocument.fromJson(json["drivinglicense"]);
     final orders = json['orders'] == null
         ? null
         : List.from(json["orders"]).map((e) {
@@ -114,6 +161,7 @@ class Rider {
       role: role,
       age: age,
       approve: approve,
+      reason: reason,
       token: token,
       requestedAmount: requestedAmount,
       image: image,
@@ -128,6 +176,8 @@ class Rider {
       referenceContact2: refCon2,
       drivinglicense: drivinglicense,
       orders: orders,
+      isDue: isDue,
+      rc_book: rcBook,
     );
   }
 }

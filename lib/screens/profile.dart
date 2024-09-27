@@ -22,7 +22,7 @@ class Profile extends StatefulWidget {
 }
 
 class _ProfileState extends State<Profile> {
-  final TrackingService trackingService = Get.find<TrackingService>();
+  // final TrackingService trackingService = Get.put(TrackingService());
 
   final _storage = GetStorage();
   @override
@@ -57,7 +57,7 @@ class _ProfileState extends State<Profile> {
                           radius: 35,
                           onBackgroundImageError: (exception, stackTrace) {},
                           backgroundImage: NetworkImage(
-                            ridercontroller.rider.image,
+                            ridercontroller.rider.image!.url,
                           ),
                           backgroundColor: accentColor,
                         ),
@@ -396,7 +396,7 @@ class _ProfileState extends State<Profile> {
                     GestureDetector(
                       onTap: () {
                         _storage.remove("token");
-                        trackingService.setUser("");
+                        // trackingService.setUser("");
                         Get.to(
                           () => const Login(),
                         );

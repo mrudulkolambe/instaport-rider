@@ -1,5 +1,4 @@
-// ignore_for_file: empty_catches
-
+// // ignore_for_file: empty_catches
 import 'package:background_location/background_location.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:get/get.dart';
@@ -15,8 +14,9 @@ class TrackingService extends GetxService {
   @override
   void onInit() {
     super.onInit();
+    // Listen to changes in the user value and start location tracking if the user is set.
     ever(user, (String value) {
-      if (value != "") {
+      if (value.isNotEmpty) {
         _startListening();
       }
     });
@@ -25,7 +25,7 @@ class TrackingService extends GetxService {
   void setUser(String value) {
     user.value = value;
     print("Value: $value");
-    if (value != "") {
+    if (value.isNotEmpty) {
       _startListening();
     }
   }
@@ -36,55 +36,41 @@ class TrackingService extends GetxService {
 
   void _startListening() {
     try {
+      // Set the Android notification for background location tracking.
       BackgroundLocation.setAndroidNotification(
         title: 'Background Location',
         message: 'Location is being tracked in the background',
         icon: '@drawable/ic_launcher',
       );
-      BackgroundLocation.setAndroidConfiguration(
-        5000,
-      );
 
+      // Set the Android configuration for the background location service.
+      BackgroundLocation.setAndroidConfiguration(5000);
+
+      // Start the location service with a distance filter of 10 meters.
       BackgroundLocation.startLocationService(distanceFilter: 10);
 
-      BackgroundLocation.getLocationUpdates((position) async {
-        print("Location ${position.latitude} - ${position.longitude}");
-        DatabaseReference ref =
-            FirebaseDatabase.instance.ref("rider/${user.value}");
+      // Listen to location updates.
+      BackgroundLocation.getLocationUpdates((location) async {
+        print("Location ${location.latitude} - ${location.longitude}");
+        
+        // Get the Firebase reference for the user.
+        DatabaseReference ref = FirebaseDatabase.instance.ref("rider/${user.value}");
+        
+        // Read the token from storage.
         var token = await _storage.read("token");
+        
+        // If the token is available, update the user's location in Firebase.
         if (token != null) {
           await ref.update({
-            "latitude": position.latitude,
-            "longitude": position.longitude,
+            "latitude": location.latitude,
+            "longitude": location.longitude,
           });
-          location.value = position;
-        } else {
-          // _geolocator.
+          this.location.value = location;
         }
       });
-
-      // _geolocator
-      //     .getPositionStream(
-      //   locationSettings: const LocationSettings(
-      //     accuracy: LocationAccuracy.bestForNavigation,
-      //     distanceFilter: 10,
-      //   ),
-      // )
-      //     .listen((position) async {
-      //   print("User: ${user.value}");
-        // DatabaseReference ref =
-        //     FirebaseDatabase.instance.ref("rider/${user.value}");
-        // var token = await _storage.read("token");
-        // if (token != null) {
-        //   await ref.update({
-        //     "latitude": position.latitude,
-        //     "longitude": position.longitude,
-        //   });
-        //   location.value = position;
-        // } else {
-        //   // _geolocator.
-        // }
-      // });
-    } catch (e) {}
+    } catch (e) {
+      // Handle any errors.
+      print("Error in _startListening: $e");
+    }
   }
 }

@@ -26,7 +26,7 @@ class CustomBottomNavigationBar extends StatefulWidget {
 final _storage = GetStorage();
 
 class _CustomBottomNavigationBarState extends State<CustomBottomNavigationBar> {
-  final TrackingService trackingService = Get.find<TrackingService>();
+  // final TrackingService trackingService = Get.put(TrackingService());
   final RiderController riderController = Get.put(RiderController());
   @override
   void initState() {
@@ -107,10 +107,10 @@ class _CustomBottomNavigationBarState extends State<CustomBottomNavigationBar> {
                 setState(() {
                   if (value) {
                     riderController.rider.status = "online";
-                    trackingService.setUser(riderController.rider.id);
+                    // trackingService.setUser(riderController.rider.id);
                   } else {
                     riderController.rider.status = "offline";
-                    trackingService.setUser("");
+                    // trackingService.setUser("");
                   }
                 });
               },

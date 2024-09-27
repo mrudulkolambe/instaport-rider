@@ -12,9 +12,11 @@ class RiderController extends GetxController {
     wallet_amount: 0.0,
     requestedAmount: 0.0,
     age: "",
-    image: "",
+    image: RiderDocument(status: 'upload', url: "", type: "image"),
     status: "available",
     approve: false,
+    aadharcard: RiderDocument(status: 'upload', url: "", type: "aadhar"),
+    pancard: RiderDocument(status: 'upload', url: "", type: "pan"),
   );
 
   void updateRider(Rider data) {

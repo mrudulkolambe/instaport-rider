@@ -53,7 +53,7 @@ class _BillDeskPaymentState extends State<BillDeskPayment> {
             height: MediaQuery.of(context).size.height,
             child: InAppWebView(
               initialUrlRequest: URLRequest(
-                url: Uri.parse(widget.url),
+                url: WebUri(widget.url),
               ),
               shouldOverrideUrlLoading: (controller, request) async {
                 return NavigationActionPolicy.ALLOW;

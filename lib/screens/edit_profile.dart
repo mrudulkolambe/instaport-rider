@@ -14,6 +14,7 @@ import 'package:http/http.dart' as http;
 import 'package:instaport_rider/main.dart';
 import 'package:instaport_rider/models/cloudinary_upload.dart';
 import 'package:instaport_rider/models/rider_model.dart';
+import 'package:instaport_rider/models/upload.dart';
 import 'package:instaport_rider/utils/image_modifier.dart';
 import 'package:instaport_rider/utils/mask_fomatter.dart';
 import 'package:instaport_rider/utils/toast_manager.dart';
@@ -44,14 +45,14 @@ class _EditProfileState extends State<EditProfile> {
     handlePrefetch();
   }
 
-  Future<bool> requestGalleryPermission() async {
+  Future<bool> requestCameraPermission() async {
     setState(() {
       uploading = true;
     });
-    if (await Permission.storage.request().isGranted) {
+    if (await Permission.camera.request().isGranted) {
       return true; // Permission already granted
     } else {
-      var status = await Permission.storage.request();
+      var status = await Permission.camera.request();
       if (status.isGranted) {
         return true;
       } else {
@@ -60,38 +61,37 @@ class _EditProfileState extends State<EditProfile> {
     }
   }
 
-  Future<void> uploadToCloudinary(File imageFile) async {
-    final url =
-        Uri.parse('https://api.cloudinary.com/v1_1/dwd2fznsk/image/upload');
-    final request = http.MultipartRequest('POST', url)
-      ..fields['upload_preset'] = 'pmoqxm8k'
-      ..files.add(await http.MultipartFile.fromPath('file', imageFile.path));
-    final response = await request.send();
+  Future<SingleUploadResponse?> uploadSingleFile(File file, String path) async {
+    var request = http.MultipartRequest('POST', Uri.parse("$apiUrl/upload"));
+    request.fields.addAll({'path': path});
+    request.files.add(await http.MultipartFile.fromPath('files', file.path));
+    http.StreamedResponse response = await request.send();
     if (response.statusCode == 200) {
-      final responseData = await response.stream.toBytes();
-      final responseString = String.fromCharCodes(responseData);
-      final jsonMap = jsonDecode(responseString);
-      var data = CloudinaryUpload.fromJson(jsonMap);
+      final result = await response.stream.bytesToString();
+      final data = SingleUploadResponse.fromJson(jsonDecode(result));
       setState(() {
-        image = data.secureUrl;
+        image = data.media.url;
       });
       handleSave();
+      return data;
+    } else {
+      return null;
     }
   }
 
   Future<void> getImage() async {
-    bool permissionGranted = await requestGalleryPermission();
+    bool permissionGranted = await requestCameraPermission();
     if (permissionGranted) {
       final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      final XFile? image = await picker.pickImage(source: ImageSource.camera);
       if (image != null) {
         File pickedImageFile = File(image.path);
         int sizeInBytes = await pickedImageFile.length();
         double sizeInMB = sizeInBytes / (1024 * 1024);
         if (sizeInMB <= 10.0) {
-          uploadToCloudinary(pickedImageFile);
+          uploadSingleFile(pickedImageFile, "rider/profile/");
         } else {
-        ToastManager.showToast("Size should be less than 10MB");
+          ToastManager.showToast("Size should be less than 10MB");
           setState(() {
             uploading = false;
           });
@@ -161,7 +161,7 @@ class _EditProfileState extends State<EditProfile> {
     _phonecontroller.text = rider.mobileno;
     _agecontroller.text = rider.age;
     setState(() {
-      image = rider.image;
+      image = rider.image!.url;
     });
   }
 
