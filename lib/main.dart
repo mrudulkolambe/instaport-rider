@@ -197,31 +197,37 @@ class _SplashScreenState extends State<SplashScreen> {
         final data = await http.get(Uri.parse('$apiUrl/rider/'),
             headers: {'Authorization': 'Bearer $token'});
         final userData = RiderDataResponse.fromJson(jsonDecode(data.body));
+        riderController.updateRider(userData.rider);
         List<Map<String, String>> documents = [];
         documents.add({
           "type": "aadhaar",
           "status": userData.rider.aadharcard!.status,
-          "reason": userData.rider.aadharcard!.reason!
+          "reason": userData.rider.aadharcard!.reason!,
+          "url": userData.rider.aadharcard!.url,
         });
         documents.add({
           "type": "pan",
           "status": userData.rider.pancard!.status,
-          "reason": userData.rider.pancard!.reason!
+          "reason": userData.rider.pancard!.reason!,
+          "url": userData.rider.pancard!.url,
         });
         documents.add({
           "type": "driving",
           "status": userData.rider.drivinglicense!.status,
-          "reason": userData.rider.drivinglicense!.reason!
+          "reason": userData.rider.drivinglicense!.reason!,
+          "url": userData.rider.drivinglicense!.url,
         });
         documents.add({
           "type": "rc",
           "status": userData.rider.rc_book!.status,
-          "reason": userData.rider.rc_book!.reason!
+          "reason": userData.rider.rc_book!.reason!,
+          "url": userData.rider.rc_book!.url,
         });
         documents.add({
           "type": "image",
           "status": userData.rider.image!.status,
-          "reason": userData.rider.image!.reason!
+          "reason": userData.rider.image!.reason!,
+          "url": userData.rider.image!.url,
         });
         if (!userData.rider.verified) {
           Get.to(() => const Verification());

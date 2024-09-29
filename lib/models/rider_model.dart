@@ -77,6 +77,7 @@ class Rider {
   List<String>? orders;
   bool verified;
   bool? isDue;
+  bool applied;
 
   Rider({
     required this.id,
@@ -103,16 +104,19 @@ class Rider {
     this.referenceContact2,
     this.drivinglicense,
     this.rc_book,
+    required this.applied,
     this.orders,
     this.isDue,
   });
 
   factory Rider.fromJson(dynamic json) {
+    print("APPLIED ${json["applied"]}");
     final id = json['_id'] as String;
     final fullname = json['fullname'] as String;
     final mobileno = json['mobileno'] as String;
     final status = json['status'] as String;
     final token = json['token'] as String;
+    final applied = json["applied"] as bool;
     final verified = json["verified"] as bool;
     final approve = json['approve'] as bool;
     final isDue = json['isDue'] as bool;
@@ -167,6 +171,7 @@ class Rider {
       image: image,
       wallet_amount: wallet_amount,
       address: address,
+      applied: applied,
       aadharcard: aadharcard,
       pancard: pancard,
       accname: accHolder,

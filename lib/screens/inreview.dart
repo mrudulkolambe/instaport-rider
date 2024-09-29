@@ -27,11 +27,13 @@ class InReview extends StatefulWidget {
 class _InReviewState extends State<InReview> {
   var presscount = 0;
   final _storage = GetStorage();
+  List<Map<String, dynamic>> documents = [];
   String aadhaarStatus = "upload";
   String panStatus = "upload";
   String rcStatus = "upload";
   String drivingStatus = "upload";
   String imageStatus = "upload";
+  String buttonStatus = "submit";
   String aadhaarReason = "";
   String panReason = "";
   String rcReason = "";
@@ -45,14 +47,14 @@ class _InReviewState extends State<InReview> {
   bool isRCBookUploaded = false;
 
   String getStatus(type) {
-    var document = widget.documents.where((doc) {
+    var document = documents.where((doc) {
       return doc["type"] == type;
     });
     return document.first["status"] as String;
   }
 
   String getReason(type) {
-    var document = widget.documents.where((doc) {
+    var document = documents.where((doc) {
       return doc["type"] == type;
     });
     return document.first["reason"] as String;
@@ -60,6 +62,9 @@ class _InReviewState extends State<InReview> {
 
   @override
   void initState() {
+    setState(() {
+      documents = widget.documents;
+    });
     aadhaarStatus = getStatus("aadhaar");
     panStatus = getStatus("pan");
     rcStatus = getStatus("rc");
@@ -129,6 +134,20 @@ class _InReviewState extends State<InReview> {
   }
 
   final RiderController riderController = Get.put(RiderController());
+
+  void handleDocuments(key, data) {
+    setState(() {
+      documents = widget.documents.map((document) {
+        if (document.containsKey(key)) {
+          document = data;
+          return document;
+        } else {
+          return document;
+        }
+      }).toList();
+    });
+  }
+
   void handleSave(key, data) async {
     try {
       handleStates(key, "loading");
@@ -147,8 +166,13 @@ class _InReviewState extends State<InReview> {
         var data = await response.stream.bytesToString();
         var profileData = RiderDataResponse.fromJson(jsonDecode(data));
         riderController.updateRider(profileData.rider);
-        ToastManager.showToast("$key updated");
-        handleStates(key, "pending");
+        if (key == "applied") {
+          ToastManager.showToast("Documents submitted");
+          handleStates(key, "pending");
+        } else {
+          ToastManager.showToast("$key updated");
+          handleStates(key, "pending");
+        }
       } else {
         ToastManager.showToast(response.reasonPhrase!);
       }
@@ -159,19 +183,19 @@ class _InReviewState extends State<InReview> {
     setState(() {
       switch (key) {
         case "image":
-          imageStatus = "pending";
+          imageStatus = status;
           break;
         case "aadhar_number":
-          aadhaarStatus = "pending";
+          aadhaarStatus = status;
           break;
         case "pan_number":
-          panStatus = "pending";
+          panStatus = status;
           break;
         case "drivinglicense":
-          drivingStatus = "pending";
+          drivingStatus = status;
           break;
         case "rc_book":
-          rcStatus = "pending";
+          rcStatus = status;
           break;
         default:
       }
@@ -214,11 +238,14 @@ class _InReviewState extends State<InReview> {
                   onTap: () async {
                     if (imageStatus == "upload" || imageStatus == "reject") {
                       final data = await getImage("image/");
-                      handleSave("image", {
-                        "url": data!.media.url,
-                        "status": "pending",
-                        "type": "image"
-                      });
+                      if (data != null) {
+                        handleSave("image", {
+                          "url": data.media.url,
+                          "status": "pending",
+                          "type": "image"
+                        });
+                        handleStates("image", "pending");
+                      }
                     }
                   },
                   child: Container(
@@ -232,7 +259,7 @@ class _InReviewState extends State<InReview> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          "Selfie Image",
+                          "Selfie Image *",
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -254,7 +281,7 @@ class _InReviewState extends State<InReview> {
                           const Icon(
                             Icons.timer_outlined,
                             size: 24,
-                            color: Colors.blue,
+                            color: Colors.amber,
                           ),
                         if (imageStatus == "reject")
                           const Icon(
@@ -290,11 +317,13 @@ class _InReviewState extends State<InReview> {
                     if (aadhaarStatus == "upload" ||
                         aadhaarStatus == "reject") {
                       final data = await getImage("aadhaar/");
-                      handleSave("aadhar_number", {
-                        "url": data!.media.url,
-                        "status": "pending",
-                        "type": "aadhaar"
-                      });
+                      if (data != null) {
+                        handleSave("aadhar_number", {
+                          "url": data.media.url,
+                          "status": "pending",
+                          "type": "aadhaar"
+                        });
+                      }
                     }
                   },
                   child: Container(
@@ -308,7 +337,7 @@ class _InReviewState extends State<InReview> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          "Aadhaar Card",
+                          "Aadhaar Card *",
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -330,7 +359,7 @@ class _InReviewState extends State<InReview> {
                           const Icon(
                             Icons.timer_outlined,
                             size: 24,
-                            color: Colors.blue,
+                            color: Colors.amber,
                           ),
                         if (aadhaarStatus == "reject")
                           const Icon(
@@ -365,11 +394,13 @@ class _InReviewState extends State<InReview> {
                   onTap: () async {
                     if (panStatus == "upload" || panStatus == "reject") {
                       final data = await getImage("pan/");
-                      handleSave("pan_number", {
-                        "url": data!.media.url,
-                        "status": "pending",
-                        "type": "pan"
-                      });
+                      if (data != null) {
+                        handleSave("pan_number", {
+                          "url": data.media.url,
+                          "status": "pending",
+                          "type": "pan"
+                        });
+                      }
                     }
                   },
                   child: Container(
@@ -383,7 +414,7 @@ class _InReviewState extends State<InReview> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          "PAN Card",
+                          "PAN Card *",
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -405,7 +436,7 @@ class _InReviewState extends State<InReview> {
                           const Icon(
                             Icons.timer_outlined,
                             size: 24,
-                            color: Colors.blue,
+                            color: Colors.amber,
                           ),
                         if (panStatus == "reject")
                           const Icon(
@@ -441,11 +472,13 @@ class _InReviewState extends State<InReview> {
                     if (drivingStatus == "upload" ||
                         drivingStatus == "reject") {
                       final data = await getImage("drivingLicense/");
-                      handleSave("drivinglicense", {
-                        "url": data!.media.url,
-                        "status": "pending",
-                        "type": "drivinglicense"
-                      });
+                      if (data != null) {
+                        handleSave("drivinglicense", {
+                          "url": data.media.url,
+                          "status": "pending",
+                          "type": "drivinglicense"
+                        });
+                      }
                     }
                   },
                   child: Container(
@@ -481,7 +514,7 @@ class _InReviewState extends State<InReview> {
                           const Icon(
                             Icons.timer_outlined,
                             size: 24,
-                            color: Colors.blue,
+                            color: Colors.amber,
                           ),
                         if (drivingStatus == "reject")
                           const Icon(
@@ -516,11 +549,13 @@ class _InReviewState extends State<InReview> {
                   onTap: () async {
                     if (rcStatus == "upload" || rcStatus == "reject") {
                       final data = await getImage("rc/");
-                      handleSave("rc_book", {
-                        "url": data!.media.url,
-                        "status": "pending",
-                        "type": "rc"
-                      });
+                      if (data != null) {
+                        handleSave("rc_book", {
+                          "url": data.media.url,
+                          "status": "pending",
+                          "type": "rc"
+                        });
+                      }
                     }
                   },
                   child: Container(
@@ -556,7 +591,7 @@ class _InReviewState extends State<InReview> {
                           const Icon(
                             Icons.timer_outlined,
                             size: 24,
-                            color: Colors.blue,
+                            color: Colors.amber,
                           ),
                         if (rcStatus == "reject")
                           const Icon(
@@ -587,13 +622,45 @@ class _InReviewState extends State<InReview> {
                 const SizedBox(
                   height: 30,
                 ),
-                Text(
-                  "Your documents will get reviewed!",
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
+                if (riderController.rider.applied)
+                  Text(
+                    "Your documents are being reviewed!",
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
+                if (!riderController.rider.applied)
+                  GestureDetector(
+                    onTap: () {
+                      if (aadhaarStatus != "reject" &&
+                          aadhaarStatus != "upload" &&
+                          panStatus != "reject" &&
+                          panStatus != "upload" &&
+                          imageStatus != "reject" &&
+                          imageStatus != "upload") {
+                        handleSave("applied", true);
+                      } else {
+                        ToastManager.showToast(
+                            "Submit all the required documents");
+                      }
+                    },
+                    child: Container(
+                      height: 55,
+                      width: 150,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        color: accentColor,
+                      ),
+                      child: Center(
+                        child: Text(
+                          "Submit",
+                          style: GoogleFonts.poppins(
+                              color: Colors.white, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  ),
                 const SizedBox(
                   height: 15,
                 ),
