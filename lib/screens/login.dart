@@ -210,47 +210,47 @@ class _LoginState extends State<Login> {
                             Expanded(
                                 child: GestureDetector(
                               onTap: () async {
-                              // onTap: loading
-                              //     ? null
-                              //     : () async {
-                                      setState(() {
-                                        loading = true;
-                                      });
-                                      String? fcmtoken =
-                                          await FirebaseMessagingAPI()
-                                              .initNotifications();
-                                      const String url = '$apiUrl/rider/signin';
-                                      try {
-                                        final response = await http.post(
-                                          Uri.parse(url),
-                                          headers: {
-                                            'Content-Type': 'application/json'
-                                          },
-                                          body: jsonEncode({
-                                            'mobileno': _phoneController.text,
-                                            'password':
-                                                _passwordController.text,
-                                            'fcmtoken': fcmtoken ?? ""
-                                          }),
-                                        );
-                                        final data = SignInResponse.fromJson(
-                                          json.decode(response.body),
-                                        );
-                                        ToastManager.showToast(data.message);
-                                        if (data.error) {
-                                        } else {
-                                          _storage.write("token", data.token!);
-                                          writeData(data.token!);
-                                        }
-                                        // ignore: empty_catches
-                                      } catch (error) {
-                                        ToastManager.showToast(
-                                            error.toString());
-                                        setState(() {
-                                          loading = false;
-                                        });
-                                      }
+                                // onTap: loading
+                                //     ? null
+                                //     : () async {
+                                setState(() {
+                                  loading = true;
+                                });
+                                String? fcmtoken = await FirebaseMessagingAPI()
+                                    .initNotifications();
+                                const String url = '$apiUrl/rider/signin';
+                                try {
+                                  final response = await http.post(
+                                    Uri.parse(url),
+                                    headers: {
+                                      'Content-Type': 'application/json'
                                     },
+                                    body: jsonEncode({
+                                      'mobileno': _phoneController.text,
+                                      'password': _passwordController.text,
+                                      'fcmtoken': fcmtoken ?? ""
+                                    }),
+                                  );
+                                  final data = SignInResponse.fromJson(
+                                    json.decode(response.body),
+                                  );
+                                  ToastManager.showToast(data.message);
+                                  if (data.error) {
+                                    setState(() {
+                                      loading = false;
+                                    });
+                                  } else {
+                                    _storage.write("token", data.token!);
+                                    writeData(data.token!);
+                                  }
+                                  // ignore: empty_catches
+                                } catch (error) {
+                                  ToastManager.showToast("Wrong id or password");
+                                  setState(() {
+                                    loading = false;
+                                  });
+                                }
+                              },
                               child: Container(
                                 height: 55,
                                 decoration: BoxDecoration(

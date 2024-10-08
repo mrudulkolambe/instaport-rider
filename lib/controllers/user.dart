@@ -6,6 +6,7 @@ class RiderController extends GetxController {
     id: "",
     fullname: "",
     applied: false,
+    timestamp: 0,
     verified: false,
     mobileno: "",
     token: "",

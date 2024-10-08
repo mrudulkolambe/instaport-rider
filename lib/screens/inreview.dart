@@ -237,6 +237,7 @@ class _InReviewState extends State<InReview> {
                 InkWell(
                   onTap: () async {
                     if (imageStatus == "upload" || imageStatus == "reject") {
+                      handleStates("image", "loading");
                       final data = await getImage("image/");
                       if (data != null) {
                         handleSave("image", {
@@ -316,6 +317,7 @@ class _InReviewState extends State<InReview> {
                   onTap: () async {
                     if (aadhaarStatus == "upload" ||
                         aadhaarStatus == "reject") {
+                      handleStates("aadhar_number", "loading");
                       final data = await getImage("aadhaar/");
                       if (data != null) {
                         handleSave("aadhar_number", {
@@ -393,6 +395,7 @@ class _InReviewState extends State<InReview> {
                 InkWell(
                   onTap: () async {
                     if (panStatus == "upload" || panStatus == "reject") {
+                      handleStates("pan_number", "loading");
                       final data = await getImage("pan/");
                       if (data != null) {
                         handleSave("pan_number", {
@@ -471,6 +474,7 @@ class _InReviewState extends State<InReview> {
                   onTap: () async {
                     if (drivingStatus == "upload" ||
                         drivingStatus == "reject") {
+                      handleStates("drivinglicense", "loading");
                       final data = await getImage("drivingLicense/");
                       if (data != null) {
                         handleSave("drivinglicense", {
@@ -548,6 +552,7 @@ class _InReviewState extends State<InReview> {
                 InkWell(
                   onTap: () async {
                     if (rcStatus == "upload" || rcStatus == "reject") {
+                      handleStates("rc_book", "loading");
                       final data = await getImage("rc/");
                       if (data != null) {
                         handleSave("rc_book", {
@@ -626,7 +631,7 @@ class _InReviewState extends State<InReview> {
                   Text(
                     "Your documents are being reviewed!",
                     style: GoogleFonts.poppins(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

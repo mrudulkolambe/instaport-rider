@@ -262,12 +262,14 @@ class _CreateAccountState extends State<CreateAccount> {
                                           body: jsonEncode({
                                             'fullname': _namecontroller.text,
                                             'mobileno': _phonecontroller.text,
-                                            'password':  _passwordcontroller.text,
+                                            'password':
+                                                _passwordcontroller.text,
                                           }),
                                         );
                                         if (response.body
                                             .contains("duplicate")) {
-                                          ToastManager.showToast("Mobile number already in use");
+                                          ToastManager.showToast(
+                                              "Mobile number already in use");
                                           setState(() {
                                             loading = false;
                                           });
@@ -276,15 +278,10 @@ class _CreateAccountState extends State<CreateAccount> {
                                             json.decode(response.body),
                                           );
                                           ToastManager.showToast(data.message);
-                                          if (data.error) {
-                                            setState(() {
-                                              loading = false;
-                                            });
-                                          } else {
-                                            setState(() {
-                                              loading = false;
-                                            });
-                                          }
+                                          setState(() {
+                                            loading = false;
+                                          });
+                                          Get.offAll(() => const Login());
                                         }
 
                                         // ignore: empty_catches
@@ -294,8 +291,7 @@ class _CreateAccountState extends State<CreateAccount> {
                                         });
                                       }
                                     } else {
-                                      ToastManager.showToast(
-                                          "Please fill the form correctly!");
+                                      ToastManager.showToast("Please fill the form correctly!");
                                     }
                                   },
                                   child: Container(

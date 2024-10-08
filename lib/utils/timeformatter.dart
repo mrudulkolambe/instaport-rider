@@ -5,6 +5,12 @@ String readTimestamp(int timestamp) {
   var date = DateTime.fromMicrosecondsSinceEpoch(timestamp * 1000);
   return format.format(date);
 }
+String readTimestampAsDate(int timestamp) {
+  var format = DateFormat('d-MMM-yyyy');
+  var date = DateTime.fromMicrosecondsSinceEpoch(timestamp * 1000);
+  return format.format(date);
+}
+
 String readTimestampAsTime(int timestamp) {
   var format = DateFormat('hh:mm a');
   var date = DateTime.fromMicrosecondsSinceEpoch(timestamp * 1000);

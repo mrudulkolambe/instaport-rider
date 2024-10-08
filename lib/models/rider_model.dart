@@ -60,6 +60,7 @@ class Rider {
   String? reason;
   RiderDocument? image;
   String token;
+  int timestamp;
   double wallet_amount;
   double requestedAmount;
   bool approve;
@@ -82,6 +83,7 @@ class Rider {
   Rider({
     required this.id,
     required this.fullname,
+    required this.timestamp,
     required this.mobileno,
     required this.role,
     required this.age,
@@ -140,6 +142,7 @@ class Rider {
         ? null
         : RiderDocument.fromJson(json["rc_book"]);
     final accno = json["acc_no"];
+    final timestamp = json["timestamp"];
     final accIFSC = json["acc_ifsc"];
     final accHolder = json["acc_holder"];
     final drivinglicense = json["drivinglicense"] == null
@@ -166,6 +169,7 @@ class Rider {
       age: age,
       approve: approve,
       reason: reason,
+      timestamp: timestamp,
       token: token,
       requestedAmount: requestedAmount,
       image: image,

@@ -126,14 +126,20 @@ class _EditProfileState extends State<EditProfile> {
         "fullname": _fullnamecontroller.text,
         "age": _agecontroller.text,
         "mobileno": _phonecontroller.text,
-        "image": image
+        "image": {
+          "url": image,
+          "status": riderController.rider.image!.status,
+          "type": "image"
+        }
       });
       request.headers.addAll(headers);
 
       http.StreamedResponse response = await request.send();
 
+        print(response.statusCode);
       if (response.statusCode == 200) {
         var data = await response.stream.bytesToString();
+        print(data);
         var profileData = RiderDataResponse.fromJson(jsonDecode(data));
         riderController.updateRider(profileData.rider);
         ToastManager.showToast(profileData.message);

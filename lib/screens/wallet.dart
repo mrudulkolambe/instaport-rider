@@ -65,6 +65,7 @@ class _WalletState extends State<Wallet> {
       if (response.statusCode == 200) {
         RiderTransactions transactionResponse =
             RiderTransactions.fromJson(jsonDecode(response.body));
+          print(transactionResponse.transactions.reversed.toList());
         setState(() {
           loading = false;
           transactions = transactionResponse.transactions.reversed.toList();
