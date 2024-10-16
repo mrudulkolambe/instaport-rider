@@ -172,33 +172,47 @@ class _IDCardWidgetState extends State<IDCardWidget> {
                       fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(
-                  height: 10,
+                  height: 8,
                 ),
                 Text(
-                  "Rider at Instaport",
+                  "ID: #${widget.riderController.rider.id.substring(18)}",
                   style: GoogleFonts.poppins(
                       fontSize: 16,
-                      color: Colors.black,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(
+                  height: 8,
+                ),
+                Text(
+                  "Phone: ${widget.riderController.rider.mobileno}",
+                  style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      color: Colors.white,
                       fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(
                   height: 15,
                 ),
                 Text(
-                  "Joined at: ${readTimestampAsDate(widget.riderController.rider.timestamp)}",
+                  "Delivery partner at Instaport",
                   style: GoogleFonts.poppins(
                       fontSize: 16,
-                      color: Colors.white,
+                      color: Colors.black,
                       fontWeight: FontWeight.w600),
                 ),
-              ]),
-              Text(
-                "ID: #${widget.riderController.rider.id.substring(18)}",
-                style: GoogleFonts.poppins(
+                const SizedBox(
+                  height: 10,
+                ),
+                Text(
+                  "Joined at: ${readTimestampAsDate(widget.riderController.rider.timestamp)}",
+                  style: GoogleFonts.poppins(
                     fontSize: 16,
                     color: Colors.white,
-                    fontWeight: FontWeight.w600),
-              ),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ]),
             ],
           ),
         )
