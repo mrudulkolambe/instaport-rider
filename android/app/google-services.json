@@ -1,10 +1,30 @@
 {
   "project_info": {
     "project_number": "209395485323",
+    "firebase_url": "https://instaport-main-default-rtdb.firebaseio.com",
     "project_id": "instaport-main",
-    "storage_bucket": "instaport-main.appspot.com"
+    "storage_bucket": "instaport-main.firebasestorage.app"
   },
   "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:209395485323:android:880929315dbe7b3cf1a28e",
+        "android_client_info": {
+          "package_name": "com.instaport.customer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAcyS-03eWA8hCJ6ZMBm-Q_jbW7ymVKrR0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
     {
       "client_info": {
         "mobilesdk_app_id": "1:209395485323:android:89e8a330b7d3ede4f1a28e",

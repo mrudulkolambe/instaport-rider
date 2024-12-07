@@ -18,12 +18,12 @@ class DistanceFutureBuilder extends StatefulWidget {
 class _DistanceFutureBuilderState extends State<DistanceFutureBuilder> {
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<double>(
+    return FutureBuilder<double?>(
       future: LocationService().fetchDistance(
         widget.src,
         widget.dest,
       ),
-      builder: (BuildContext context, AsyncSnapshot<double> snapshot) {
+      builder: (BuildContext context, AsyncSnapshot<double?> snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Text(
             "Loading...",

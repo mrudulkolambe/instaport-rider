@@ -12,8 +12,10 @@ import 'package:instaport_rider/screens/faq.dart';
 import 'package:instaport_rider/screens/home.dart';
 import 'package:instaport_rider/screens/profile.dart';
 import 'package:instaport_rider/screens/wallet.dart';
+import 'package:instaport_rider/services/background_location_service.dart';
 import 'package:instaport_rider/services/tracking_service.dart';
 import 'package:http/http.dart' as http;
+import 'package:instaport_rider/utils/background_location.dart';
 
 class CustomBottomNavigationBar extends StatefulWidget {
   const CustomBottomNavigationBar({super.key});
@@ -26,7 +28,7 @@ class CustomBottomNavigationBar extends StatefulWidget {
 final _storage = GetStorage();
 
 class _CustomBottomNavigationBarState extends State<CustomBottomNavigationBar> {
-  // final TrackingService trackingService = Get.put(TrackingService());
+  // final LocationController locationController = Get.put(LocationController());
   final RiderController riderController = Get.put(RiderController());
   @override
   void initState() {
@@ -107,10 +109,12 @@ class _CustomBottomNavigationBarState extends State<CustomBottomNavigationBar> {
                 setState(() {
                   if (value) {
                     riderController.rider.status = "online";
-                    // trackingService.setUser(riderController.rider.id);
+                    // locationController.startFetchingLocation()
+                      // startBackgroundService();
                   } else {
                     riderController.rider.status = "offline";
-                    // trackingService.setUser("");
+                      // stopBackgroundService();
+                    // locationController.stopFetchingLocation();
                   }
                 });
               },

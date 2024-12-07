@@ -86,16 +86,7 @@ class _EditProfileState extends State<EditProfile> {
       final XFile? image = await picker.pickImage(source: ImageSource.camera);
       if (image != null) {
         File pickedImageFile = File(image.path);
-        int sizeInBytes = await pickedImageFile.length();
-        double sizeInMB = sizeInBytes / (1024 * 1024);
-        if (sizeInMB <= 10.0) {
-          uploadSingleFile(pickedImageFile, "rider/profile/");
-        } else {
-          ToastManager.showToast("Size should be less than 10MB");
-          setState(() {
-            uploading = false;
-          });
-        }
+        uploadSingleFile(pickedImageFile, "rider/profile/");
       } else {
         setState(() {
           uploading = false;
@@ -136,7 +127,7 @@ class _EditProfileState extends State<EditProfile> {
 
       http.StreamedResponse response = await request.send();
 
-        print(response.statusCode);
+      print(response.statusCode);
       if (response.statusCode == 200) {
         var data = await response.stream.bytesToString();
         print(data);

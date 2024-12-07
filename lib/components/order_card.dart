@@ -58,16 +58,17 @@ class _OrderCardState extends State<OrderCard> {
 
   Future<void> _launchUrlMap(
       LatLng src, LatLng dest, List<Address> droplocations) async {
-  String endpoint = "";
+    String endpoint = "";
     if (droplocations.isEmpty) {
       endpoint =
           "https://www.google.com/maps/dir/?api=1&origin=${src.latitude},${src.longitude}&destination=${dest.latitude},${dest.longitude}&travelmode=motorcycle&avoid=tolls&units=imperial&language=en&departure_time=now";
     } else {
       final List<LatLng> dropArr = [];
       dropArr.add(dest);
-      if(droplocations.length > 1){
+      if (droplocations.length > 1) {
         for (var i = 0; i < droplocations.length - 2; i++) {
-          dropArr.add(LatLng(droplocations[i].latitude, droplocations[i].longitude)); 
+          dropArr.add(
+              LatLng(droplocations[i].latitude, droplocations[i].longitude));
         }
       }
       final String waypointsString = dropArr
@@ -616,9 +617,11 @@ class _OrderCardState extends State<OrderCard> {
     );
 
     if (!_isMounted) return;
-    setState(() {
-      distance = data;
-    });
+    if (data != null) {
+      setState(() {
+        distance = data;
+      });
+    }
   }
 
   @override
@@ -659,7 +662,8 @@ class _OrderCardState extends State<OrderCard> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
               child: Column(
                 children: [
                   // Checkbox(
@@ -669,7 +673,7 @@ class _OrderCardState extends State<OrderCard> {
                   //     widget.onSelectionChanged(value ?? false);
                   //   },
                   // ),
-        
+
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -762,10 +766,10 @@ class _OrderCardState extends State<OrderCard> {
                                   builder: (controller) {
                                     return DistanceFutureBuilder(
                                       src: LatLng(
-                                        controller
-                                            .currentposition.value.target.latitude,
-                                        controller
-                                            .currentposition.value.target.longitude,
+                                        controller.currentposition.value.target
+                                            .latitude,
+                                        controller.currentposition.value.target
+                                            .longitude,
                                       ),
                                       dest: LatLng(
                                         widget.data.pickup.latitude,

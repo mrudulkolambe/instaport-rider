@@ -46,7 +46,9 @@ class DefaultFirebaseOptions {
     messagingSenderId: '209395485323',
     projectId: 'instaport-main',
     authDomain: 'instaport-main.firebaseapp.com',
-    storageBucket: 'instaport-main.appspot.com',
+    databaseURL: 'https://instaport-main-default-rtdb.firebaseio.com',
+    storageBucket: 'instaport-main.firebasestorage.app',
+    measurementId: 'G-JYW2EG9MPB',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
@@ -54,7 +56,8 @@ class DefaultFirebaseOptions {
     appId: '1:209395485323:android:89e8a330b7d3ede4f1a28e',
     messagingSenderId: '209395485323',
     projectId: 'instaport-main',
-    storageBucket: 'instaport-main.appspot.com',
+    databaseURL: 'https://instaport-main-default-rtdb.firebaseio.com',
+    storageBucket: 'instaport-main.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
@@ -62,7 +65,8 @@ class DefaultFirebaseOptions {
     appId: '1:209395485323:ios:1b67a255b0fffb85f1a28e',
     messagingSenderId: '209395485323',
     projectId: 'instaport-main',
-    storageBucket: 'instaport-main.appspot.com',
+    databaseURL: 'https://instaport-main-default-rtdb.firebaseio.com',
+    storageBucket: 'instaport-main.firebasestorage.app',
     iosBundleId: 'com.instaport.rider',
   );
 

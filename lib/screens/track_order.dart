@@ -8,6 +8,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -17,6 +18,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:instaport_rider/components/address_details.dart';
 import 'package:instaport_rider/constants/colors.dart';
 import 'package:instaport_rider/controllers/app.dart';
+import 'package:instaport_rider/controllers/user.dart';
 import 'package:instaport_rider/firebase_messaging/firebase_messaging.dart';
 import 'package:instaport_rider/main.dart';
 import 'package:instaport_rider/models/address_model.dart';
@@ -26,12 +28,16 @@ import 'package:instaport_rider/models/places_model.dart';
 import 'package:instaport_rider/models/price_model.dart';
 import 'package:instaport_rider/models/upload.dart';
 import 'package:instaport_rider/screens/home.dart';
+import 'package:instaport_rider/screens/track_order_upload.dart';
 import 'package:instaport_rider/services/location_service.dart';
 import 'package:instaport_rider/utils/timeformatter.dart';
 import 'package:instaport_rider/utils/toast_manager.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
+import 'package:camera/camera.dart';
+import 'package:path_provider/path_provider.dart' as path_provider;
+import 'package:path/path.dart' as path;
 
 class TrackOrder extends StatefulWidget {
   final Orders data;
@@ -60,7 +66,7 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
   Orders? order;
   OnlyDetails? realtime;
   List<Column> droplocationslists = [];
-  late TabController _tabController;
+  TabController? _tabController;
   final _storage = GetStorage();
   Timer? _timer;
   StreamSubscription<DatabaseEvent>? _databaseListener;
@@ -107,7 +113,6 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
       refresh();
     });
     _initializeMap();
-    _tabController = TabController(length: 2, vsync: this);
   }
 
   int _counter = 0;
@@ -126,106 +131,31 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
     });
   }
 
+  void setTimer(int time) {
+    setState(() {
+      _counter = time;
+    });
+  }
+
   void stopTimer() {
     _timer!.cancel();
   }
 
   void handleConfirm(
       String address, String key, Address addressObj, String type) async {
-    final token = await _storage.read("token");
-    var data = await http.get(Uri.parse("$apiUrl/order/customer/${order!.id}"));
-    var orderData = OrderResponse.fromJson(jsonDecode(data.body));
-    var filterOrder = orderData.order.orderStatus.where((element) {
-      return element.message == address;
-    });
-    String img = "";
-    if (address != "Pickup Started" && filterOrder.isEmpty) {
-      img = await getImage();
-    }
-    if (filterOrder.isEmpty) {
-      var headers = {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json'
-      };
-      var request = http.Request(
-          'PATCH', Uri.parse('$apiUrl/order/orderstatus/${order!.id}'));
-      if (address == "Pickup Started") {
-        request.body = json.encode({
-          "status": "processing",
-          "orderStatus": [
-            ...orderData.order.orderStatus.map((e) {
-              return e.toJson();
-            }).toList(),
-            {
-              "timestamp": DateTime.now().millisecondsSinceEpoch,
-              "message": address,
-            }
-          ]
-        });
-      } else if (img != "") {
-        var items = orderData.order.orderStatus.map((e) {
-          return e.toJson();
-        });
-        request.body = json.encode({
-          "status": "processing",
-          "timer": _counter,
-          "orderStatus": [
-            ...items.toList(),
-            {
-              "timestamp": DateTime.now().millisecondsSinceEpoch,
-              "message": address,
-              "image": img,
-              "key": key,
-            }
-          ]
-        });
-      } else if (img == "") {
-        ToastManager.showToast("Image not uploaded yet");
-      }
-      request.headers.addAll(headers);
-
-      http.StreamedResponse response = await request.send();
-
-      if (response.statusCode == 200) {
-        var json = await response.stream.bytesToString();
-        var updatedOrderData = OrderResponse.fromJson(jsonDecode(json));
-        if (updatedOrderData.order.orderStatus.isEmpty) {
-        } else if (updatedOrderData.order.orderStatus.isNotEmpty &&
-            updatedOrderData.order.orderStatus.length == 1) {
-          // stopTimer();
-          // var timeLimit = DateTime.fromMillisecondsSinceEpoch(
-          //         updatedOrderData.order.timer + 45 * minute)
-          //     .millisecondsSinceEpoch;
-          // setState(() {
-          //   _counter = timeLimit - updatedOrderData.order.time_stamp;
-          // });
-          // countdownTimer();
-        } else if (updatedOrderData.order.status == "processing" &&
-            updatedOrderData.order.orderStatus.length !=
-                3 + updatedOrderData.order.droplocations.length) {
-          stopTimer();
-          var timerInt = DateTime.now().millisecondsSinceEpoch;
-          var timeLimit =
-              DateTime.fromMillisecondsSinceEpoch(timerInt + 60 * minute)
-                      .millisecondsSinceEpoch +
-                  updatedOrderData.order.timer;
-          setState(() {
-            _counter = timeLimit - timerInt;
-          });
-          countdownTimer();
-        } else {
-          stopTimer();
-        }
-        ToastManager.showToast(updatedOrderData.message);
-        setState(() {
-          order = updatedOrderData.order;
-        });
-        refresh();
-      } else {}
-    } else {
-      Get.back(closeOverlays: true);
-      ToastManager.showToast("Unable to update");
-    }
+    Get.offAll(() => TrackOrderUpload(
+        order: order!,
+        counter: _counter,
+        setTimer: setTimer,
+        stopTimer: stopTimer,
+        minute: minute,
+        countdownTimer: countdownTimer,
+        updateOrder: updateOrder,
+        refresh: refresh,
+        address: address,
+        addressKey: key,
+        addressObj: addressObj,
+        type: type));
     while (Get.isDialogOpen! && !Get.isSnackbarOpen) {
       Get.back();
     }
@@ -389,27 +319,11 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
     }
   }
 
+  final ImagePicker picker = ImagePicker();
   Future<String> getImage() async {
     bool permissionGranted = await requestGalleryPermission();
     if (permissionGranted) {
-      final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(source: ImageSource.camera);
-      if (image != null) {
-        File pickedImageFile = File(image.path);
-        int sizeInBytes = await pickedImageFile.length();
-        double sizeInMB = sizeInBytes / (1024 * 1024);
-        if (sizeInMB <= 10.0) {
-          final imgUrl = await uploadSingleFile(
-              pickedImageFile, "${widget.data.id}/track/");
-          return imgUrl as String;
-        } else {
-          ToastManager.showToast("Size should be less than 10MB");
-        }
-      } else {
-        setState(() {
-          // uploading = false;
-        });
-      }
+      return "https://instaport-s3.s3.ap-south-1.amazonaws.com/image/421e0dff-dd51-4380-8827-644c819f64d25082300393085621421.jpg";
     } else {
       setState(() {
         // uploading = false;
@@ -419,6 +333,29 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
     }
     return "";
   }
+  // Future<String> getImage() async {
+  //   bool permissionGranted = await requestGalleryPermission();
+  //   if (permissionGranted) {
+  //     final XFile? image = await picker.pickImage(source: ImageSource.camera);
+  //     if (image != null) {
+  //       File pickedImageFile = File(image.path);
+  //       final imgUrl =
+  //           await uploadSingleFile(pickedImageFile, "${widget.data.id}/track/");
+  //       return imgUrl as String;
+  //     } else {
+  //       setState(() {
+  //         // uploading = false;
+  //       });
+  //     }
+  //   } else {
+  //     setState(() {
+  //       // uploading = false;
+  //     });
+  //     openAppSettings();
+  //     ToastManager.showToast('Permission to access gallery denied');
+  //   }
+  //   return "";
+  // }
 
   void displayUploading() {
     Get.dialog(
@@ -501,15 +438,22 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
               body: "The order was not delivered on time."));
         }
         setState(() {
+          mainButtonLoading = false;
           order = updatedOrderData.order;
         });
         ToastManager.showToast(updatedOrderData.message);
         Get.to(() => const Home());
       } else {
+        setState(() {
+          mainButtonLoading = false;
+        });
         Get.back();
         ToastManager.showToast(response.reasonPhrase!);
       }
     } else {
+      setState(() {
+        mainButtonLoading = false;
+      });
       Get.back();
       ToastManager.showToast("Complete all the dropings first.");
     }
@@ -521,22 +465,27 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
       var distance = await LocationService().fetchDistance(
           LatLng(posi.latitude, posi.longitude),
           LatLng(order!.pickup.latitude, order!.pickup.longitude));
-      if (distance <= 2500) {
-        handleConfirmStatus("Pickup", order!.pickup, "pick");
-      } else {
-        ToastManager.showToast(
-            "Your location should be in the range of 2.5km from the location");
+      print("DISTANCE $distance");
+      if (distance != null) {
+        if (distance <= 2500) {
+          handleConfirmStatus("Pickup", order!.pickup, "pick");
+        } else {
+          ToastManager.showToast(
+              "Your location should be in the range of 2.5km from the location");
+        }
       }
     } else if (order!.orderStatus.length == 2 && order!.droplocations.isEmpty) {
       var posi = await _getCurrentLocationSingle();
       var distance = await LocationService().fetchDistance(
           LatLng(posi.latitude, posi.longitude),
           LatLng(order!.drop.latitude, order!.drop.longitude));
-      if (distance <= 2500) {
-        handleConfirmStatus("Drop", order!.drop, "drop");
-      } else {
-        ToastManager.showToast(
-            "Your location should be in the range of 2.5km from the location");
+      if (distance != null) {
+        if (distance <= 2500) {
+          handleConfirmStatus("Drop", order!.drop, "drop");
+        } else {
+          ToastManager.showToast(
+              "Your location should be in the range of 2.5km from the location");
+        }
       }
     } else {
       Get.dialog(
@@ -588,11 +537,13 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                               LatLng(posi.latitude, posi.longitude),
                               LatLng(
                                   order!.drop.latitude, order!.drop.longitude));
-                          if (distance <= 2500) {
-                            handleConfirmStatus("Drop", order!.drop, "drop");
-                          } else {
-                            ToastManager.showToast(
-                                "Your location should be in the range of 2.5km from the location");
+                          if (distance != null) {
+                            if (distance <= 2500) {
+                              handleConfirmStatus("Drop", order!.drop, "drop");
+                            } else {
+                              ToastManager.showToast(
+                                  "Your location should be in the range of 2.5km from the location");
+                            }
                           }
                         },
                         child: Container(
@@ -710,7 +661,13 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
     }
   }
 
+  bool mainButtonLoading = false;
+
   void handleConfirmStatus(String task, Address address, String type) {
+    print("TASK $task $type");
+    setState(() {
+      mainButtonLoading = true;
+    });
     Get.dialog(
         barrierDismissible: false,
         Dialog(
@@ -834,7 +791,12 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                           ),
                           Expanded(
                             child: GestureDetector(
-                              onTap: () => Get.back(),
+                              onTap: () {
+                                setState(() {
+                                  mainButtonLoading = false;
+                                });
+                                Get.back();
+                              },
                               child: Container(
                                 decoration: BoxDecoration(
                                   color: Colors.transparent,
@@ -875,6 +837,12 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
     });
   }
 
+  void updateOrder(Orders updatedOrder) {
+    setState(() {
+      order = updatedOrder;
+    });
+  }
+
   void refreshMain() async {
     var data =
         await http.get(Uri.parse("$apiUrl/order/customer/${widget.data.id}"));
@@ -906,6 +874,10 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
     }
     setState(() {
       order = orderData.order;
+      _tabController = TabController(
+        length: orderData.order.payment_method == "cod" ? 2 : 1,
+        vsync: this,
+      );
       _mapKey = UniqueKey();
       CurrentLocation = LatLng(
         appController.currentposition.value.target.latitude,
@@ -1808,409 +1780,442 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                   ),
                                 )),
                               ),
-                              Expanded(
-                                child: Column(
-                                  children: <Widget>[
-                                    TabBar(
-                                      controller: _tabController,
-                                      indicatorSize: TabBarIndicatorSize.tab,
-                                      indicatorWeight: 2.5,
-                                      enableFeedback: false,
-                                      labelStyle: GoogleFonts.poppins(
-                                          fontWeight: FontWeight.w600),
-                                      labelColor: Colors.black,
-                                      indicatorColor: accentColor,
-                                      unselectedLabelColor: Colors.black26,
-                                      tabs: const [
-                                        Tab(
-                                          text: 'Details',
-                                        ),
-                                        Tab(
-                                          text: 'Breakdown',
-                                        ),
-                                      ],
-                                    ),
-                                    Expanded(
-                                      child: SizedBox(
-                                        child: TabBarView(
-                                          controller: _tabController,
-                                          children: [
-                                            SingleChildScrollView(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                horizontal: 25,
-                                              ),
-                                              child: Column(
-                                                children: [
-                                                  const SizedBox(
-                                                    height: 10,
+                              if (_tabController != null && !loading)
+                                Expanded(
+                                  child: Column(
+                                    children: <Widget>[
+                                      TabBar(
+                                        controller: _tabController,
+                                        indicatorSize: TabBarIndicatorSize.tab,
+                                        indicatorWeight: 2.5,
+                                        enableFeedback: false,
+                                        labelStyle: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.w600),
+                                        labelColor: Colors.black,
+                                        indicatorColor: accentColor,
+                                        unselectedLabelColor: Colors.black26,
+                                        tabs: [
+                                          Tab(
+                                            text: 'Details',
+                                          ),
+                                          if (order!.payment_method == "cod")
+                                            Tab(
+                                              text: 'Breakdown',
+                                            ),
+                                        ],
+                                      ),
+                                      if (_tabController != null && !loading)
+                                        Expanded(
+                                          child: SizedBox(
+                                            child: TabBarView(
+                                              controller: _tabController,
+                                              children: [
+                                                SingleChildScrollView(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                    horizontal: 25,
                                                   ),
-                                                  Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
+                                                  child: Column(
                                                     children: [
-                                                      Text(
-                                                        "Rs. ${(order!.amount * ((100 - order!.commission) / 100)).toPrecision(2).toString()}",
-                                                        style:
-                                                            GoogleFonts.poppins(
-                                                          fontSize: 28,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                      Text(
-                                                        "#${order!.id.substring(18)}",
-                                                        style: GoogleFonts
-                                                            .poppins(),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(
-                                                    height: 6,
-                                                  ),
-                                                  Row(
-                                                    children: [
-                                                      Text(
-                                                        "Weight: ",
-                                                        style:
-                                                            GoogleFonts.poppins(
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
                                                       const SizedBox(
-                                                        width: 2,
+                                                        height: 10,
                                                       ),
-                                                      Text(
-                                                        order!.parcel_weight,
-                                                        style: GoogleFonts
-                                                            .poppins(),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(
-                                                    height: 6,
-                                                  ),
-                                                  Row(
-                                                    children: [
-                                                      Text(
-                                                        "Parcel: ",
-                                                        style:
-                                                            GoogleFonts.poppins(
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(
-                                                        width: 2,
-                                                      ),
-                                                      Text(
-                                                        order!.package,
-                                                        style: GoogleFonts
-                                                            .poppins(),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(
-                                                    height: 6,
-                                                  ),
-                                                  Row(
-                                                    children: [
-                                                      Text(
-                                                        "Customer Name: ",
-                                                        style:
-                                                            GoogleFonts.poppins(
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(
-                                                        width: 2,
-                                                      ),
-                                                      Text(
-                                                        order!
-                                                            .customer.fullname,
-                                                        style: GoogleFonts
-                                                            .poppins(),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  if (order!.status !=
-                                                      "delivered")
-                                                    const SizedBox(
-                                                      height: 6,
-                                                    ),
-                                                  if (order!.status !=
-                                                      "delivered")
-                                                    Row(
-                                                      children: [
-                                                        Text(
-                                                          "Customer No.: ",
-                                                          style: GoogleFonts
-                                                              .poppins(
-                                                            fontWeight:
-                                                                FontWeight.bold,
+                                                      Row(
+                                                        mainAxisAlignment:
+                                                            MainAxisAlignment
+                                                                .spaceBetween,
+                                                        children: [
+                                                          Text(
+                                                            "Rs. ${(order!.amount * ((100 - order!.commission) / 100)).toPrecision(2).toString()}",
+                                                            style: GoogleFonts
+                                                                .poppins(
+                                                              fontSize: 28,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
                                                           ),
-                                                        ),
-                                                        const SizedBox(
-                                                          width: 2,
-                                                        ),
-                                                        GestureDetector(
-                                                          onTap: () =>
-                                                              _makePhoneCall(
-                                                            order!.customer
-                                                                .mobileno,
-                                                          ),
-                                                          child: Text(
-                                                            order!.customer
-                                                                .mobileno,
+                                                          Text(
+                                                            "#${order!.id.substring(18)}",
                                                             style: GoogleFonts
                                                                 .poppins(),
                                                           ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  const SizedBox(
-                                                    height: 6,
-                                                  ),
-                                                  Row(
-                                                    children: [
-                                                      Text(
-                                                        "Payment: ",
-                                                        style:
-                                                            GoogleFonts.poppins(
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
+                                                        ],
                                                       ),
                                                       const SizedBox(
-                                                        width: 2,
+                                                        height: 6,
                                                       ),
-                                                      Text(
-                                                        order!.payment_method,
-                                                        style: GoogleFonts
-                                                            .poppins(),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(
-                                                    height: 6,
-                                                  ),
-                                                  Row(
-                                                    children: [
-                                                      Text(
-                                                        "Time: ",
-                                                        style:
-                                                            GoogleFonts.poppins(
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(
-                                                        width: 2,
-                                                      ),
-                                                      Text(
-                                                        readTimestamp(
-                                                            order!.time_stamp),
-                                                        style: GoogleFonts
-                                                            .poppins(),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(
-                                                    height: 10,
-                                                  ),
-                                                  const Divider(),
-                                                  AddressDetailsScreen(
-                                                    address: order!.pickup,
-                                                    title: "Pickup",
-                                                    scheduled:
-                                                        order!.delivery_type !=
-                                                            "now",
-                                                    paymentAddress:
-                                                        order!.payment_address,
-                                                    time: order!.time_stamp,
-                                                    orderStatus:
-                                                        order!.orderStatus,
-                                                    index: 0,
-                                                    amount: order!.amount,
-                                                    type: order!.payment_method,
-                                                    status: order!.status,
-                                                  ),
-                                                  const SizedBox(
-                                                    height: 15,
-                                                  ),
-                                                  const Divider(),
-                                                  AddressDetailsScreen(
-                                                    address: order!.drop,
-                                                    title: "Drop",
-                                                    scheduled:
-                                                        order!.delivery_type !=
-                                                            "now",
-                                                    paymentAddress:
-                                                        order!.payment_address,
-                                                    time: order!.time_stamp,
-                                                    orderStatus:
-                                                        order!.orderStatus,
-                                                    index: 1,
-                                                    type: order!.payment_method,
-                                                    amount: order!.amount,
-                                                    status: order!.status,
-                                                  ),
-                                                  ...droplocationslists
-                                                      .map((Column item) {
-                                                    return item;
-                                                  }).toList(),
-                                                  const SizedBox(height: 20),
-                                                  if (order!
-                                                          .orderStatus.length <
-                                                      2)
-                                                    GestureDetector(
-                                                      onTap: () =>
-                                                          withdrawOrderConfirm(
-                                                              "other"),
-                                                      child: Container(
-                                                        decoration:
-                                                            BoxDecoration(
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(8),
-                                                          color: accentColor,
-                                                        ),
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                          vertical: 15,
-                                                        ),
-                                                        child: Center(
-                                                          child: Text(
-                                                            "Withdraw Order (-Rs. ${price == null ? 40 : price!.withdrawalCharges})",
+                                                      Row(
+                                                        children: [
+                                                          Text(
+                                                            "Weight: ",
                                                             style: GoogleFonts
                                                                 .poppins(
                                                               fontWeight:
                                                                   FontWeight
-                                                                      .w600,
+                                                                      .bold,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 2,
+                                                          ),
+                                                          Text(
+                                                            order!
+                                                                .parcel_weight,
+                                                            style: GoogleFonts
+                                                                .poppins(),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      const SizedBox(
+                                                        height: 6,
+                                                      ),
+                                                      Row(
+                                                        children: [
+                                                          Text(
+                                                            "Parcel: ",
+                                                            style: GoogleFonts
+                                                                .poppins(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 2,
+                                                          ),
+                                                          Text(
+                                                            order!.package,
+                                                            style: GoogleFonts
+                                                                .poppins(),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      const SizedBox(
+                                                        height: 6,
+                                                      ),
+                                                      Row(
+                                                        children: [
+                                                          Text(
+                                                            "Customer Name: ",
+                                                            style: GoogleFonts
+                                                                .poppins(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 2,
+                                                          ),
+                                                          Text(
+                                                            order!.customer
+                                                                .fullname,
+                                                            style: GoogleFonts
+                                                                .poppins(),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      if (order!.status !=
+                                                          "delivered")
+                                                        const SizedBox(
+                                                          height: 6,
+                                                        ),
+                                                      if (order!.status !=
+                                                          "delivered")
+                                                        Row(
+                                                          children: [
+                                                            Text(
+                                                              "Customer No.: ",
+                                                              style: GoogleFonts
+                                                                  .poppins(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                              ),
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 2,
+                                                            ),
+                                                            GestureDetector(
+                                                              onTap: () =>
+                                                                  _makePhoneCall(
+                                                                order!.customer
+                                                                    .mobileno,
+                                                              ),
+                                                              child: Text(
+                                                                order!.customer
+                                                                    .mobileno,
+                                                                style: GoogleFonts
+                                                                    .poppins(),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      const SizedBox(
+                                                        height: 6,
+                                                      ),
+                                                      Row(
+                                                        children: [
+                                                          Text(
+                                                            "Payment: ",
+                                                            style: GoogleFonts
+                                                                .poppins(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 2,
+                                                          ),
+                                                          Text(
+                                                            order!
+                                                                .payment_method,
+                                                            style: GoogleFonts
+                                                                .poppins(),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      const SizedBox(
+                                                        height: 6,
+                                                      ),
+                                                      Row(
+                                                        children: [
+                                                          Text(
+                                                            "Time: ",
+                                                            style: GoogleFonts
+                                                                .poppins(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 2,
+                                                          ),
+                                                          Text(
+                                                            readTimestamp(order!
+                                                                .time_stamp),
+                                                            style: GoogleFonts
+                                                                .poppins(),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      const SizedBox(
+                                                        height: 10,
+                                                      ),
+                                                      const Divider(),
+                                                      AddressDetailsScreen(
+                                                        address: order!.pickup,
+                                                        title: "Pickup",
+                                                        scheduled: order!
+                                                                .delivery_type !=
+                                                            "now",
+                                                        paymentAddress: order!
+                                                            .payment_address,
+                                                        time: order!.time_stamp,
+                                                        orderStatus:
+                                                            order!.orderStatus,
+                                                        index: 0,
+                                                        amount: order!.amount,
+                                                        type: order!
+                                                            .payment_method,
+                                                        status: order!.status,
+                                                      ),
+                                                      const SizedBox(
+                                                        height: 15,
+                                                      ),
+                                                      const Divider(),
+                                                      AddressDetailsScreen(
+                                                        address: order!.drop,
+                                                        title: "Drop",
+                                                        scheduled: order!
+                                                                .delivery_type !=
+                                                            "now",
+                                                        paymentAddress: order!
+                                                            .payment_address,
+                                                        time: order!.time_stamp,
+                                                        orderStatus:
+                                                            order!.orderStatus,
+                                                        index: 1,
+                                                        type: order!
+                                                            .payment_method,
+                                                        amount: order!.amount,
+                                                        status: order!.status,
+                                                      ),
+                                                      ...droplocationslists
+                                                          .map((Column item) {
+                                                        return item;
+                                                      }).toList(),
+                                                      const SizedBox(
+                                                          height: 20),
+                                                      if (order!.orderStatus
+                                                              .length <
+                                                          2)
+                                                        GestureDetector(
+                                                          onTap: () =>
+                                                              withdrawOrderConfirm(
+                                                                  "other"),
+                                                          child: Container(
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          8),
                                                               color:
-                                                                  Colors.white,
+                                                                  accentColor,
+                                                            ),
+                                                            padding:
+                                                                const EdgeInsets
+                                                                    .symmetric(
+                                                              vertical: 15,
+                                                            ),
+                                                            child: Center(
+                                                              child: Text(
+                                                                "Withdraw Order (-Rs. ${price == null ? 40 : price!.withdrawalCharges})",
+                                                                style:
+                                                                    GoogleFonts
+                                                                        .poppins(
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                  color: Colors
+                                                                      .white,
+                                                                ),
+                                                              ),
                                                             ),
                                                           ),
                                                         ),
+                                                      const SizedBox(
+                                                        height: 130,
                                                       ),
-                                                    ),
-                                                  const SizedBox(
-                                                    height: 130,
+                                                    ],
                                                   ),
-                                                ],
-                                              ),
-                                            ),
-                                            Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 25.0),
-                                              child: Column(
-                                                children: [
-                                                  const SizedBox(
-                                                    height: 10,
-                                                  ),
-                                                  if (order!.payment_method ==
-                                                      "cod")
-                                                    Row(
-                                                      mainAxisAlignment:
-                                                          MainAxisAlignment
-                                                              .spaceBetween,
+                                                ),
+                                                if (order!.payment_method ==
+                                                    "cod")
+                                                  Padding(
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 25.0),
+                                                    child: Column(
                                                       children: [
-                                                        Text(
-                                                          "Instaport Commission",
-                                                          style: GoogleFonts
-                                                              .poppins(
-                                                            fontSize: 14,
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                          ),
+                                                        const SizedBox(
+                                                          height: 10,
                                                         ),
-                                                        Text(
-                                                          "- ₹${(order!.amount * (order!.commission / 100)).toPrecision(1).toString()}",
-                                                          style: GoogleFonts
-                                                              .poppins(
-                                                            fontSize: 14,
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                            color: Colors.red,
+                                                        if (order!
+                                                                .payment_method ==
+                                                            "cod")
+                                                          Row(
+                                                            mainAxisAlignment:
+                                                                MainAxisAlignment
+                                                                    .spaceBetween,
+                                                            children: [
+                                                              Text(
+                                                                "Instaport Commission",
+                                                                style:
+                                                                    GoogleFonts
+                                                                        .poppins(
+                                                                  fontSize: 14,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                ),
+                                                              ),
+                                                              Text(
+                                                                "- ₹${(order!.amount * (order!.commission / 100)).toPrecision(1).toString()}",
+                                                                style:
+                                                                    GoogleFonts
+                                                                        .poppins(
+                                                                  fontSize: 14,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  color: Colors
+                                                                      .red,
+                                                                ),
+                                                              ),
+                                                            ],
                                                           ),
+                                                        if (order!
+                                                                .payment_method ==
+                                                            "cod")
+                                                          const SizedBox(
+                                                            height: 7,
+                                                          ),
+                                                        Row(
+                                                          mainAxisAlignment:
+                                                              MainAxisAlignment
+                                                                  .spaceBetween,
+                                                          children: [
+                                                            Text(
+                                                              "Rider Charge",
+                                                              style: GoogleFonts
+                                                                  .poppins(
+                                                                fontSize: 14,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                              ),
+                                                            ),
+                                                            Text(
+                                                              "+ ₹${(order!.amount * ((100 - order!.commission) / 100)).toPrecision(1).toString()}",
+                                                              style: GoogleFonts
+                                                                  .poppins(
+                                                                fontSize: 14,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                                color: Colors
+                                                                    .green,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 7,
+                                                        ),
+                                                        Row(
+                                                          mainAxisAlignment:
+                                                              MainAxisAlignment
+                                                                  .spaceBetween,
+                                                          children: [
+                                                            Text(
+                                                              "Parcel Charge",
+                                                              style: GoogleFonts
+                                                                  .poppins(
+                                                                fontSize: 14,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                              ),
+                                                            ),
+                                                            Text(
+                                                              "₹${(order!.amount).toPrecision(1).toString()}",
+                                                              style: GoogleFonts
+                                                                  .poppins(
+                                                                fontSize: 14,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                                color: Colors
+                                                                    .black,
+                                                              ),
+                                                            ),
+                                                          ],
                                                         ),
                                                       ],
                                                     ),
-                                                  if (order!.payment_method ==
-                                                      "cod")
-                                                    const SizedBox(
-                                                      height: 7,
-                                                    ),
-                                                  Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      Text(
-                                                        "Rider Charge",
-                                                        style:
-                                                            GoogleFonts.poppins(
-                                                          fontSize: 14,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                      Text(
-                                                        "+ ₹${(order!.amount * ((100 - order!.commission) / 100)).toPrecision(1).toString()}",
-                                                        style:
-                                                            GoogleFonts.poppins(
-                                                          fontSize: 14,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          color: Colors.green,
-                                                        ),
-                                                      ),
-                                                    ],
                                                   ),
-                                                  const SizedBox(
-                                                    height: 7,
-                                                  ),
-                                                  Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      Text(
-                                                        "Parcel Charge",
-                                                        style:
-                                                            GoogleFonts.poppins(
-                                                          fontSize: 14,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                      Text(
-                                                        "₹${(order!.amount).toPrecision(1).toString()}",
-                                                        style:
-                                                            GoogleFonts.poppins(
-                                                          fontSize: 14,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          color: Colors.black,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                              ),
+                                              ],
                                             ),
-                                          ],
+                                          ),
                                         ),
-                                      ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
                             ],
                           ),
                         ),
@@ -2259,40 +2264,66 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                               key: _mapKey,
                               child: GestureDetector(
                                 onTap: () {
-                                  order!.orderStatus.isEmpty
-                                      ? handleConfirmStatus(
-                                          "start",
-                                          Address(
-                                              text: "",
-                                              latitude: 0.0,
-                                              longitude: 0.0,
-                                              building_and_flat: "",
-                                              floor_and_wing: "",
-                                              instructions: "",
-                                              phone_number: "",
-                                              address: "Pickup Started",
-                                              key: "pickup started",
-                                              name: ""),
-                                          "start")
-                                      : order!.orderStatus.length ==
-                                              3 + order!.droplocations.length
-                                          ? handleConfirmStatus(
-                                              "order",
-                                              Address(
-                                                  text: "",
-                                                  latitude: 0.0,
-                                                  longitude: 0.0,
-                                                  building_and_flat: "",
-                                                  floor_and_wing: "",
-                                                  instructions: "",
-                                                  phone_number: "",
-                                                  address: "Order Completed",
-                                                  key: "completed",
-                                                  name: ""),
-                                              "complete")
-                                          : order!.status == "delivered"
-                                              ? ()
-                                              : handleStatusUpdate();
+                                  print("MAIN $mainButtonLoading   $order");
+                                  // if (mainButtonLoading || order == null) {
+                                  //   setState(() {
+                                  //     mainButtonLoading = false;
+                                  //   });
+                                  //   return;
+                                  // }
+                                  if (mainButtonLoading) {
+                                    print('mainButtonLoading');
+                                  } else if (order!.orderStatus.isEmpty) {
+                                    setState(() {
+                                      mainButtonLoading = true;
+                                    });
+                                    print(
+                                        'order!.orderStatus.isEmpty ${order!.orderStatus.isEmpty}');
+                                    handleConfirmStatus(
+                                        "start",
+                                        Address(
+                                            text: "",
+                                            latitude: 0.0,
+                                            longitude: 0.0,
+                                            building_and_flat: "",
+                                            floor_and_wing: "",
+                                            instructions: "",
+                                            phone_number: "",
+                                            address: "Pickup Started",
+                                            key: "pickup started",
+                                            name: ""),
+                                        "start");
+                                  } else if (order!.orderStatus.length ==
+                                      3 + order!.droplocations.length) {
+                                    setState(() {
+                                      mainButtonLoading = true;
+                                    });
+                                    print(
+                                        "order!.orderStatus.length == 3 + order!.droplocations.length ${order!.orderStatus.length == 3 + order!.droplocations.length}");
+                                    handleConfirmStatus(
+                                        "order",
+                                        Address(
+                                            text: "",
+                                            latitude: 0.0,
+                                            longitude: 0.0,
+                                            building_and_flat: "",
+                                            floor_and_wing: "",
+                                            instructions: "",
+                                            phone_number: "",
+                                            address: "Order Completed",
+                                            key: "completed",
+                                            name: ""),
+                                        "complete");
+                                  } else if (order!.status == "delivered") {
+                                    print(
+                                        "order!.status == 'delivered' ${order!.status == "delivered"}");
+                                  } else {
+                                    setState(() {
+                                      mainButtonLoading = true;
+                                    });
+                                    print("else");
+                                    handleStatusUpdate();
+                                  }
                                 },
                                 child: Container(
                                   height: 55,
@@ -2307,22 +2338,26 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                                   ),
                                   child: Center(
                                     child: Text(
-                                      order == null
-                                          ? "Loading"
-                                          : order!.orderStatus.isEmpty
-                                              ? "Start Pickup"
-                                              : order!.orderStatus.length == 1
-                                                  ? "Parcel Picked Up"
+                                      mainButtonLoading
+                                          ? "Loading..."
+                                          : order == null
+                                              ? "Loading"
+                                              : order!.orderStatus.isEmpty
+                                                  ? "Start Pickup"
                                                   : order!.orderStatus.length ==
-                                                          3 +
-                                                              order!
-                                                                  .droplocations
-                                                                  .length
-                                                      ? "Complete Order"
-                                                      : order!.status ==
-                                                              "delivered"
-                                                          ? "Completed"
-                                                          : "Parcel Dropped",
+                                                          1
+                                                      ? "Parcel Picked Up"
+                                                      : order!.orderStatus
+                                                                  .length ==
+                                                              3 +
+                                                                  order!
+                                                                      .droplocations
+                                                                      .length
+                                                          ? "Complete Order"
+                                                          : order!.status ==
+                                                                  "delivered"
+                                                              ? "Completed"
+                                                              : "Parcel Dropped",
                                       style: GoogleFonts.poppins(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
@@ -2339,6 +2374,331 @@ class _TrackOrderState extends State<TrackOrder> with TickerProviderStateMixin {
                   ),
                 ),
               ]),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ImageCaptureScreen extends StatefulWidget {
+  final String type;
+  final String path;
+  final String objKey;
+
+  const ImageCaptureScreen(
+      {super.key,
+      required this.type,
+      required this.path,
+      required this.objKey});
+
+  @override
+  _ImageCaptureScreenState createState() => _ImageCaptureScreenState();
+}
+
+class _ImageCaptureScreenState extends State<ImageCaptureScreen> {
+  CameraController? _controller;
+  List<CameraDescription> cameras = [];
+  File? _imageFile;
+  // final ApiService _apiService = ApiService();
+  bool _isUploading = false;
+  bool _isCameraInitialized = false;
+  final RiderController riderController = Get.put(RiderController());
+  @override
+  void initState() {
+    super.initState();
+    _initializeCamera();
+  }
+
+  Future<void> _initializeCamera() async {
+    try {
+      cameras = await availableCameras();
+      if (cameras.isEmpty) {
+        Fluttertoast.showToast(
+          msg: 'No cameras found',
+          backgroundColor: Colors.red,
+        );
+        return;
+      }
+
+      _controller = CameraController(
+        cameras[0],
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
+
+      await _controller!.initialize();
+      setState(() {
+        _isCameraInitialized = true;
+      });
+    } catch (e) {
+      Fluttertoast.showToast(
+        msg: 'Error initializing camera: $e',
+        backgroundColor: Colors.red,
+      );
+    }
+  }
+
+  Future<void> _captureImage() async {
+    if (!_isCameraInitialized) {
+      Fluttertoast.showToast(
+        msg: 'Camera not initialized',
+        backgroundColor: Colors.red,
+      );
+      return;
+    }
+
+    try {
+      final XFile photo = await _controller!.takePicture();
+      final Directory appDir =
+          await path_provider.getApplicationDocumentsDirectory();
+      final String fileName =
+          'captured_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final String filePath = '${appDir.path}/$fileName';
+
+      await File(photo.path).copy(filePath);
+
+      setState(() {
+        _imageFile = File(filePath);
+      });
+    } catch (e) {
+      Fluttertoast.showToast(
+        msg: 'Error capturing image: $e',
+        backgroundColor: Colors.red,
+      );
+    }
+  }
+
+  final _storage = GetStorage();
+  Future<SingleUploadResponse?> uploadSingleFile(File file, String path) async {
+    var request = http.MultipartRequest('POST', Uri.parse("$apiUrl/upload"));
+    request.fields['path'] = path;
+    request.files.add(await http.MultipartFile.fromPath('files', file.path));
+
+    try {
+      final http.StreamedResponse response = await request.send();
+      if (response.statusCode == 200) {
+        final result = await response.stream.bytesToString();
+        return SingleUploadResponse.fromJson(jsonDecode(result));
+      } else {
+        throw Exception(
+            'Failed to upload file, Status: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Upload error: $e');
+      return null;
+    }
+  }
+
+  Future<void> _uploadImage() async {
+    if (_imageFile == null) {
+      Fluttertoast.showToast(
+        msg: 'No image selected to upload',
+        backgroundColor: Colors.red,
+      );
+      return;
+    }
+
+    setState(() {
+      _isUploading = true;
+    });
+
+    try {
+      if (!await _imageFile!.exists()) {
+        throw Exception('Image file not found');
+      }
+
+      final response = await uploadSingleFile(_imageFile!, widget.type);
+      print(response!.media.url);
+      if (response != null) {
+        // await handleSave(widget.objKey, {
+        //   "url": response.media.url,
+        //   "status": "pending",
+        //   "type": widget.type
+        // });
+        Fluttertoast.showToast(
+          msg: 'Image uploaded successfully!',
+          backgroundColor: Colors.green,
+        );
+
+        // Cleanup after successful upload
+        if (await _imageFile!.exists()) {
+          await _imageFile!.delete();
+        }
+
+        setState(() {
+          _imageFile = null;
+        });
+      } else {
+        throw Exception('Upload failed');
+      }
+    } catch (e) {
+      Fluttertoast.showToast(
+        msg: 'Error uploading image: ${e.toString()}',
+        backgroundColor: Colors.red,
+      );
+    } finally {
+      setState(() {
+        _isUploading = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isCameraInitialized) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        centerTitle: true,
+        title: const Text(
+          'Instaport',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: Container(
+        color: Colors.white,
+        width: double.infinity,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            _imageFile == null
+                ? Container(
+                    margin:
+                        const EdgeInsets.all(0).copyWith(left: 10, right: 10),
+                    height: 600,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      color: Colors.grey[200],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: CameraPreview(_controller!),
+                    ),
+                  )
+                : Container(
+                    margin:
+                        const EdgeInsets.all(0).copyWith(left: 10, right: 10),
+                    height: 600,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      color: Colors.grey[200],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.file(
+                        _imageFile!,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+            const SizedBox(height: 20),
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _imageFile = null;
+                });
+              },
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: Colors.red,
+                  ),
+                  child: const Text("Clear Image"),
+                ),
+              ),
+            )
+          ],
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButton: Container(
+        padding: const EdgeInsets.all(10),
+        color: Colors.transparent,
+        height: 80,
+        width: double.infinity,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: _isUploading ? null : _captureImage,
+                child: Container(
+                  height: 60,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: _isUploading ? Colors.grey : Colors.yellow,
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'Capture',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 15),
+            Expanded(
+              child: GestureDetector(
+                onTap: _isUploading ? null : _uploadImage,
+                child: Container(
+                  height: 60,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: _isUploading ? Colors.grey : Colors.yellow,
+                  ),
+                  child: Center(
+                    child: _isUploading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.black),
+                              strokeWidth: 3,
+                            ),
+                          )
+                        : const Text(
+                            'Upload',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),

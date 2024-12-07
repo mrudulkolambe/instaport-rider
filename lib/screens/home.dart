@@ -20,6 +20,7 @@ import 'package:instaport_rider/controllers/user.dart';
 import 'package:instaport_rider/main.dart';
 import 'package:instaport_rider/models/order_model.dart';
 import 'package:instaport_rider/models/rider_model.dart';
+import 'package:instaport_rider/services/background_location_service.dart';
 import 'package:instaport_rider/services/location_service.dart';
 import 'package:instaport_rider/utils/toast_manager.dart';
 

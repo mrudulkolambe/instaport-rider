@@ -96,19 +96,8 @@ class _TransportTypeState extends State<TransportType> {
 
       if (result != null && result.files.isNotEmpty) {
         File pickedFile = File(result.files.single.path!);
-        int sizeInBytes = await pickedFile.length();
-        double sizeInMB = sizeInBytes / (1024 * 1024);
-
-        // Limit file size to 10MB
-        if (sizeInMB <= 10.0) {
-          // Check file extension and handle accordingly
-          String? fileExtension = result.files.single.extension;
-          uploadFile(
-            pickedFile, "driving_license"
-          );
-        } else {
-          ToastManager.showToast("Size should be less than 10MB");
-        }
+        String? fileExtension = result.files.single.extension;
+        uploadFile(pickedFile, "driving_license");
       } else {
         setState(() {
           loading = false;

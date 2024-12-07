@@ -11,15 +11,26 @@ const String key = "AIzaSyDz11oR0kxuuNQFW9RqQYJ5NnOsfi_OGZ4";
 
 class LocationService {
   AppController appController = Get.put(AppController());
-  Future<double> fetchDistance(LatLng src, LatLng dest) async {
+  Future<double?> fetchDistance(LatLng src, LatLng dest) async {
     String endpoint =
         'https://maps.googleapis.com/maps/api/distancematrix/json?destinations=${dest.latitude},${dest.longitude}&origins=${src.latitude},${src.longitude}&key=$key';
     final response = await http.get(Uri.parse(endpoint));
 
     if (response.statusCode == 200) {
-      return DistanceApiResponse.fromJson(jsonDecode(response.body)).rows[0].elements[0].distance == null ? 0.0 : DistanceApiResponse.fromJson(jsonDecode(response.body)).rows[0].elements[0].distance!.value! + 0.0 ;
+      return DistanceApiResponse.fromJson(jsonDecode(response.body))
+                  .rows[0]
+                  .elements[0]
+                  .distance ==
+              null
+          ? 0.0
+          : DistanceApiResponse.fromJson(jsonDecode(response.body))
+                  .rows[0]
+                  .elements[0]
+                  .distance!
+                  .value! +
+              0.0;
     } else {
-      throw Exception('Failed to load places');
+      return null;
     }
   }
 

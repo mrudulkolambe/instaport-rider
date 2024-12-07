@@ -18,12 +18,16 @@ import 'package:instaport_rider/screens/inreview.dart';
 import 'package:instaport_rider/screens/login.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:instaport_rider/screens/verification.dart';
+import 'package:instaport_rider/services/background_location_service.dart';
 import 'package:instaport_rider/services/tracking_service.dart';
+import 'package:instaport_rider/utils/background_location.dart';
 import 'package:instaport_rider/utils/toast_manager.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'dart:ui';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,9 +35,18 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  // final trackingService = Get.put(TrackingService());
+
+  FlutterError.onError = (errorDetails) {
+    FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+  };
+  // Pass all uncaught asynchronous errors that aren't handled by the Flutter framework to Crashlytics
+  PlatformDispatcher.instance.onError = (error, stack) {
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    return true;
+  };
   runApp(const MyApp());
 }
+
 
 const apiUrl = "https://instaport-backend-main.vercel.app";
 // const apiUrl = "https://7edd-103-127-20-196.ngrok-free.app";
@@ -66,9 +79,9 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  AppController appController = Get.put(AppController());
-  RiderController riderController = Get.put(RiderController());
-  PriceController priceController = Get.put(PriceController());
+  final AppController appController = Get.put(AppController());
+  final RiderController riderController = Get.put(RiderController());
+  final PriceController priceController = Get.put(PriceController());
   // final TrackingService trackingService = Get.put(TrackingService());
   void getPermissions() async {
     if (await Permission.location.serviceStatus.isEnabled) {
@@ -244,7 +257,8 @@ class _SplashScreenState extends State<SplashScreen> {
           if (userData.rider.token == token) {
             handleFetchPrice();
             riderController.updateRider(userData.rider);
-            // trackingService.setUser(userData.rider.id);
+            // locationController.initialize(userData.rider.id);
+            // locationController.startFetchingLocation();
             Get.to(() => const Home());
           } else {
             _storage.remove("token");

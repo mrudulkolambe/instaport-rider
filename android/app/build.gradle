@@ -1,6 +1,7 @@
 plugins {
     id "com.android.application"
     id 'com.google.gms.google-services'
+    id 'com.google.firebase.crashlytics'
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
 }
@@ -23,11 +24,13 @@ if (flutterVersionName == null) {
     flutterVersionName = '1.0'
 }
 
-  def keystoreProperties = new Properties()
-  def keystorePropertiesFile = rootProject.file('key.properties')
-  if (keystorePropertiesFile.exists()) {
-      keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
-  }
+
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 
 android {
     namespace "com.instaport.rider"
@@ -50,7 +53,7 @@ android {
     defaultConfig {
         applicationId "com.instaport.rider"
         minSdkVersion 23
-        targetSdkVersion 33
+        targetSdkVersion 31
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
     }
@@ -65,8 +68,8 @@ android {
 
     buildTypes {
         release {
-            signingConfig signingConfigs.debug
-            // signingConfig signingConfigs.release
+            // signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
             crunchPngs false
         }
     }

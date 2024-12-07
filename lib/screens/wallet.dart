@@ -78,10 +78,10 @@ class _WalletState extends State<Wallet> {
 
   void payMoney() async {
     final token = await _storage.read("token");
-    print("https://instaport-transactions.vercel.app/rider-dues.html?token=$token&amount=${-riderController.rider.wallet_amount}");
+    print("https://instaport-transactions.vercel.app/rider-dues.html?token=$token&amount=${-riderController.rider.wallet_amount.floor()}");
     Get.to(
       () => BillDeskPayment(
-        url: "https://instaport-transactions.vercel.app/rider-dues.html?token=$token&amount=${-riderController.rider.wallet_amount}",
+        url: "https://instaport-transactions.vercel.app/rider-dues.html?token=$token&amount=${-riderController.rider.wallet_amount.floor()}",
       ),
     );
   }
